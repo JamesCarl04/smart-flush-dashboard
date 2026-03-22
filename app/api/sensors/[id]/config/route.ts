@@ -6,7 +6,7 @@ import { verifyAuthToken } from '@/lib/auth-helpers';
 import { publishConfigUpdate } from '@/lib/mqtt-publish';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 interface ConfigBody {
@@ -18,6 +18,7 @@ interface ConfigBody {
 export async function PUT(request: Request, { params }: RouteParams): Promise<NextResponse> {
   try {
     await verifyAuthToken(request);
+    const { id } = await params;
 
     const body = (await request.json()) as ConfigBody;
     const { pumpDuration, uvDuration, threshold } = body;
@@ -34,7 +35,7 @@ export async function PUT(request: Request, { params }: RouteParams): Promise<Ne
     }
 
     // Fetch existing device to merge config
-    const docRef = adminDb.collection('devices').doc(params.id);
+    const docRef = adminDb.collection('devices').doc(id);
     const doc = await docRef.get();
     if (!doc.exists) {
       return NextResponse.json({ success: false, error: 'Device not found' }, { status: 404 });
@@ -53,7 +54,7 @@ export async function PUT(request: Request, { params }: RouteParams): Promise<Ne
     // Push config to ESP32 via MQTT
     await publishConfigUpdate(mergedConfig);
 
-    return NextResponse.json({ success: true, data: { deviceId: params.id, config: mergedConfig } });
+    return NextResponse.json({ success: true, data: { deviceId: id, config: mergedConfig } });
   } catch (error) {
     if (error instanceof Response) return new NextResponse(error.body, error);
     console.error('[Sensors] config PUT error:', error);

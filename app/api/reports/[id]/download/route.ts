@@ -9,7 +9,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import type { FlushEventRow, UVCycleRow } from '@/lib/pdf-report';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 interface ReportMetadata {
@@ -43,8 +43,9 @@ export async function GET(
 ): Promise<NextResponse | Response> {
   try {
     const user = await verifyAuthToken(request);
+    const { id } = await params;
 
-    const reportDoc = await adminDb.collection('reports').doc(params.id).get();
+    const reportDoc = await adminDb.collection('reports').doc(id).get();
     if (!reportDoc.exists) {
       return NextResponse.json({ success: false, error: 'Report not found' }, { status: 404 });
     }

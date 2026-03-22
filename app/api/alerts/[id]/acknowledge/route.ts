@@ -5,15 +5,16 @@ import { verifyAuthToken } from '@/lib/auth-helpers';
 import { FieldValue } from 'firebase-admin/firestore';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // POST /api/alerts/:id/acknowledge
 export async function POST(request: Request, { params }: RouteParams): Promise<NextResponse> {
   try {
     await verifyAuthToken(request);
+    const { id } = await params;
 
-    const docRef = adminDb.collection('alerts').doc(params.id);
+    const docRef = adminDb.collection('alerts').doc(id);
     const doc = await docRef.get();
 
     if (!doc.exists) {
@@ -25,7 +26,7 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
       acknowledgedAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json({ success: true, data: { id: params.id, acknowledged: true } });
+    return NextResponse.json({ success: true, data: { id, acknowledged: true } });
   } catch (error) {
     if (error instanceof Response) return new NextResponse(error.body, error);
     console.error('[Alerts] acknowledge error:', error);

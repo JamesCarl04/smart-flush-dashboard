@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuthToken } from '@/lib/auth-helpers';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 interface UpdateRuleBody {
@@ -18,6 +18,7 @@ interface UpdateRuleBody {
 export async function PUT(request: Request, { params }: RouteParams): Promise<NextResponse> {
   try {
     await verifyAuthToken(request);
+    const { id } = await params;
 
     const body = (await request.json()) as UpdateRuleBody;
     const updates: UpdateRuleBody = {};
@@ -34,13 +35,13 @@ export async function PUT(request: Request, { params }: RouteParams): Promise<Ne
       );
     }
 
-    const docRef = adminDb.collection('automationRules').doc(params.id);
+    const docRef = adminDb.collection('automationRules').doc(id);
     const doc = await docRef.get();
     if (!doc.exists) {
       return NextResponse.json({ success: false, error: 'Rule not found' }, { status: 404 });
     }
 
-    await docRef.update(updates);
+    await docRef.update(updates as Record<string, unknown>);
     const updated = await docRef.get();
 
     return NextResponse.json({ success: true, data: updated.data() });
@@ -55,15 +56,16 @@ export async function PUT(request: Request, { params }: RouteParams): Promise<Ne
 export async function DELETE(request: Request, { params }: RouteParams): Promise<NextResponse> {
   try {
     await verifyAuthToken(request);
+    const { id } = await params;
 
-    const docRef = adminDb.collection('automationRules').doc(params.id);
+    const docRef = adminDb.collection('automationRules').doc(id);
     const doc = await docRef.get();
     if (!doc.exists) {
       return NextResponse.json({ success: false, error: 'Rule not found' }, { status: 404 });
     }
 
     await docRef.delete();
-    return NextResponse.json({ success: true, data: { id: params.id } });
+    return NextResponse.json({ success: true, data: { id } });
   } catch (error) {
     if (error instanceof Response) return new NextResponse(error.body, error);
     console.error('[AutomationRules] DELETE error:', error);

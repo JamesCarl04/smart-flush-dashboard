@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuthToken } from '@/lib/auth-helpers';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 interface SensorStats {
@@ -30,19 +30,20 @@ function todayKey(): string {
 export async function GET(request: Request, { params }: RouteParams): Promise<NextResponse> {
   try {
     await verifyAuthToken(request);
+    const { id } = await params;
 
     const dateKey = todayKey();
     const snapshot = await adminDb
       .collection('sensorReadings')
       .doc(dateKey)
       .collection('readings')
-      .where('deviceId', '==', params.id)
+      .where('deviceId', '==', id)
       .get();
 
     if (snapshot.empty) {
       return NextResponse.json({
         success: true,
-        data: { date: dateKey, deviceId: params.id, stats: [] },
+        data: { date: dateKey, deviceId: id, stats: [] },
       });
     }
 
@@ -65,7 +66,7 @@ export async function GET(request: Request, { params }: RouteParams): Promise<Ne
 
     return NextResponse.json({
       success: true,
-      data: { date: dateKey, deviceId: params.id, stats },
+      data: { date: dateKey, deviceId: id, stats },
     });
   } catch (error) {
     if (error instanceof Response) return new NextResponse(error.body, error);

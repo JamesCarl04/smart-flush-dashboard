@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuthToken } from '@/lib/auth-helpers';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 interface SensorReadingDoc {
@@ -34,6 +34,7 @@ function dateRange(from: string, to: string): string[] {
 export async function GET(request: Request, { params }: RouteParams): Promise<NextResponse> {
   try {
     await verifyAuthToken(request);
+    const { id } = await params;
 
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from');
@@ -48,22 +49,21 @@ export async function GET(request: Request, { params }: RouteParams): Promise<Ne
 
     const dates = dateRange(from, to ?? from);
 
-    // Query each date partition in parallel
+    // Query each date partition in parallel (no orderBy — sort in JS to avoid composite index)
     const snapshots = await Promise.all(
       dates.map((date) =>
         adminDb
           .collection('sensorReadings')
           .doc(date)
           .collection('readings')
-          .where('deviceId', '==', params.id)
-          .orderBy('timestamp', 'asc')
+          .where('deviceId', '==', id)
           .get()
       )
     );
 
-    const readings: SensorReadingDoc[] = snapshots.flatMap((snap) =>
-      snap.docs.map((doc) => doc.data() as SensorReadingDoc)
-    );
+    const readings: SensorReadingDoc[] = snapshots
+      .flatMap((snap) => snap.docs.map((doc) => doc.data() as SensorReadingDoc))
+      .sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
 
     return NextResponse.json({ success: true, data: readings });
   } catch (error) {

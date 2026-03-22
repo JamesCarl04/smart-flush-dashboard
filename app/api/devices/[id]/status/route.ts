@@ -4,15 +4,16 @@ import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuthToken } from '@/lib/auth-helpers';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/devices/:id/status
 export async function GET(request: Request, { params }: RouteParams): Promise<NextResponse> {
   try {
     await verifyAuthToken(request);
+    const { id } = await params;
 
-    const doc = await adminDb.collection('devices').doc(params.id).get();
+    const doc = await adminDb.collection('devices').doc(id).get();
     if (!doc.exists) {
       return NextResponse.json({ success: false, error: 'Device not found' }, { status: 404 });
     }

@@ -6,7 +6,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuthToken } from '@/lib/auth-helpers';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // Maps automation rule triggers to the maintenanceCounter field they govern
@@ -23,9 +23,10 @@ const TRIGGER_TO_COUNTER: Record<string, string> = {
 export async function POST(request: Request, { params }: RouteParams): Promise<NextResponse> {
   try {
     await verifyAuthToken(request);
+    const { id } = await params;
 
     // Fetch the rule to find what deviceId and trigger it relates to
-    const ruleDoc = await adminDb.collection('automationRules').doc(params.id).get();
+    const ruleDoc = await adminDb.collection('automationRules').doc(id).get();
     if (!ruleDoc.exists) {
       return NextResponse.json({ success: false, error: 'Rule not found' }, { status: 404 });
     }
