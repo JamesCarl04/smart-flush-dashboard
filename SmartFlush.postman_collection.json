@@ -1,0 +1,502 @@
+{
+  "info": {
+    "name": "Smart Flush API",
+    "_postman_id": "smart-flush-api-collection",
+    "description": "Complete API test collection for the Smart Flush IoT System. Import this file into Postman to get all 29 routes ready instantly.\n\nHOW TO USE:\n1. Import this file into Postman\n2. Import the SmartFlush.postman_environment.json file too\n3. Select 'Smart Flush Local' environment from the top-right dropdown\n4. Open 'Auth > Login' and click Send\n5. Token is saved automatically — now test any route!",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Login — Run This First!",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.token) {",
+                  "    pm.environment.set('token', res.data.token);",
+                  "    console.log('✅ Token saved automatically!');",
+                  "} else {",
+                  "    console.log('❌ Login failed:', JSON.stringify(res));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"james@test.com\",\n  \"password\": \"test1234\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "description": "STEP 1 — Always run this first!\n\nSends your email and password, gets a Firebase token back, and auto-saves it to your environment variable. All other requests will use this token automatically."
+          }
+        },
+        {
+          "name": "Register New User",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@test.com\",\n  \"password\": \"password123\",\n  \"displayName\": \"James\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "description": "Create a new user account in Firebase Auth + Firestore. No token required. Change the email to create different users."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] },
+            "description": "Clears the browser session cookie. NOT needed when using Postman — only for browser/web apps."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📱 Devices",
+      "item": [
+        {
+          "name": "STEP 2 — List All Devices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices", "host": ["{{baseUrl}}"], "path": ["api", "devices"] },
+            "description": "STEP 2 — List all devices.\n\nUse this to verify your token is working. If you get Unauthorized, run Login again."
+          }
+        },
+        {
+          "name": "STEP 3 — Create a Device",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.id) {",
+                  "    pm.environment.set('deviceId', res.data.id);",
+                  "    console.log('✅ deviceId saved:', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Toilet Unit 1\",\n  \"firmwareVersion\": \"1.0.0\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/devices", "host": ["{{baseUrl}}"], "path": ["api", "devices"] },
+            "description": "STEP 3 — Create a device.\n\nThe device ID is automatically saved to {{deviceId}} environment variable — all following requests will use it automatically!"
+          }
+        },
+        {
+          "name": "STEP 4 — Get Device by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}", "host": ["{{baseUrl}}"], "path": ["api", "devices", "{{deviceId}}"] },
+            "description": "STEP 4 — Get the device you just created (uses deviceId saved in Step 3)."
+          }
+        },
+        {
+          "name": "STEP 5 — Update Device",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Smart Toilet\",\n  \"description\": \"First floor bathroom\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}", "host": ["{{baseUrl}}"], "path": ["api", "devices", "{{deviceId}}"] },
+            "description": "STEP 5 — Update the device name and description."
+          }
+        },
+        {
+          "name": "STEP 6 — Get Device Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "devices", "{{deviceId}}", "status"] },
+            "description": "STEP 6 — Check if device is online or offline. Will show 'offline' until the ESP32 connects."
+          }
+        },
+        {
+          "name": "Delete Device (Cleanup)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/devices/{{deviceId}}", "host": ["{{baseUrl}}"], "path": ["api", "devices", "{{deviceId}}"] },
+            "description": "Run this at the end to delete the test device and clean up Firestore."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔧 Actuators",
+      "item": [
+        {
+          "name": "STEP 7a — Pump ON",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"command\": \"ON\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/actuators/pump", "host": ["{{baseUrl}}"], "path": ["api", "actuators", "pump"] },
+            "description": "Sends PUMP ON command via MQTT. Returns success even if no device is connected."
+          }
+        },
+        {
+          "name": "STEP 7b — Pump OFF",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"command\": \"OFF\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/actuators/pump", "host": ["{{baseUrl}}"], "path": ["api", "actuators", "pump"] }
+          }
+        },
+        {
+          "name": "STEP 7c — UV Light ON",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"command\": \"ON\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/actuators/uv", "host": ["{{baseUrl}}"], "path": ["api", "actuators", "uv"] }
+          }
+        },
+        {
+          "name": "STEP 7d — UV Light OFF",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"command\": \"OFF\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/actuators/uv", "host": ["{{baseUrl}}"], "path": ["api", "actuators", "uv"] }
+          }
+        },
+        {
+          "name": "STEP 7e — Open Lid",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/actuators/lid/open", "host": ["{{baseUrl}}"], "path": ["api", "actuators", "lid", "open"] }
+          }
+        },
+        {
+          "name": "STEP 7f — Close Lid",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/actuators/lid/close", "host": ["{{baseUrl}}"], "path": ["api", "actuators", "lid", "close"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📡 Sensors",
+      "item": [
+        {
+          "name": "STEP 8 — Update Sensor Config",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pumpDuration\": 5,\n  \"uvDuration\": 30,\n  \"threshold\": 30\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/sensors/{{deviceId}}/config", "host": ["{{baseUrl}}"], "path": ["api", "sensors", "{{deviceId}}", "config"] },
+            "description": "Update sensor config for the device. Also publishes new config to ESP32 via MQTT."
+          }
+        },
+        {
+          "name": "STEP 9 — Get Sensor Readings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sensors/{{deviceId}}/readings?from=2026-03-01&to=2026-03-21",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sensors", "{{deviceId}}", "readings"],
+              "query": [{ "key": "from", "value": "2026-03-01" }, { "key": "to", "value": "2026-03-21" }]
+            },
+            "description": "Get all sensor readings for a date range. Will be empty until the ESP32 sends real data."
+          }
+        },
+        {
+          "name": "STEP 10 — Get Sensor Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/sensors/{{deviceId}}/stats", "host": ["{{baseUrl}}"], "path": ["api", "sensors", "{{deviceId}}", "stats"] },
+            "description": "Get today's min/max/avg sensor stats."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Analytics",
+      "item": [
+        {
+          "name": "STEP 11a — Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/analytics/dashboard", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "dashboard"] },
+            "description": "Get overall summary: total flushes, water used, uptime %, UV completion rate."
+          }
+        },
+        {
+          "name": "STEP 11b — Water Usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/water-usage?from=2026-03-01&to=2026-03-21",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "analytics", "water-usage"],
+              "query": [{ "key": "from", "value": "2026-03-01" }, { "key": "to", "value": "2026-03-21" }]
+            }
+          }
+        },
+        {
+          "name": "STEP 11c — Flush Patterns",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/analytics/flush-patterns", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "flush-patterns"] },
+            "description": "Usage broken down by day of week and hour of day."
+          }
+        },
+        {
+          "name": "STEP 11d — System Performance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/analytics/system-performance", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "system-performance"] },
+            "description": "Get uptime percentage per device."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Alerts",
+      "item": [
+        {
+          "name": "STEP 12 — Create an Alert",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.id) {",
+                  "    pm.environment.set('alertId', res.data.id);",
+                  "    console.log('✅ alertId saved:', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"test_alert\",\n  \"message\": \"This is a test alert\",\n  \"severity\": \"low\",\n  \"deviceId\": \"{{deviceId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/alerts", "host": ["{{baseUrl}}"], "path": ["api", "alerts"] },
+            "description": "Creates an alert and auto-saves the alertId for next steps."
+          }
+        },
+        {
+          "name": "STEP 13 — List All Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/alerts", "host": ["{{baseUrl}}"], "path": ["api", "alerts"] }
+          }
+        },
+        {
+          "name": "STEP 14 — Acknowledge One Alert",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/alerts/{{alertId}}/acknowledge", "host": ["{{baseUrl}}"], "path": ["api", "alerts", "{{alertId}}", "acknowledge"] },
+            "description": "Acknowledge the alert created in Step 12."
+          }
+        },
+        {
+          "name": "STEP 15 — Acknowledge All Alerts",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/alerts/acknowledge-all", "host": ["{{baseUrl}}"], "path": ["api", "alerts", "acknowledge-all"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⚙️ Automation Rules",
+      "item": [
+        {
+          "name": "STEP 16 — Create a Rule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.id) {",
+                  "    pm.environment.set('ruleId', res.data.id);",
+                  "    console.log('✅ ruleId saved:', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"UV Failure Alert\",\n  \"group\": \"system_alert\",\n  \"trigger\": \"uv_cycle_failed\",\n  \"threshold\": 0,\n  \"action\": \"Send alert when UV fails\",\n  \"enabled\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/automation-rules", "host": ["{{baseUrl}}"], "path": ["api", "automation-rules"] },
+            "description": "Creates an automation rule and auto-saves the ruleId."
+          }
+        },
+        {
+          "name": "STEP 17 — List All Rules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/automation-rules", "host": ["{{baseUrl}}"], "path": ["api", "automation-rules"] }
+          }
+        },
+        {
+          "name": "STEP 18 — Update a Rule",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false,\n  \"threshold\": 100\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/automation-rules/{{ruleId}}", "host": ["{{baseUrl}}"], "path": ["api", "automation-rules", "{{ruleId}}"] }
+          }
+        },
+        {
+          "name": "STEP 19 — Reset Maintenance Counter",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/automation-rules/{{ruleId}}/reset-counter", "host": ["{{baseUrl}}"], "path": ["api", "automation-rules", "{{ruleId}}", "reset-counter"] },
+            "description": "NOTE: Only works with maintenance triggers (maintenance_lidCycleCount, maintenance_pumpTotalLiters, maintenance_uvOnTimeSeconds). Use the 'Create Maintenance Rule' request first."
+          }
+        },
+        {
+          "name": "Create Maintenance Rule (for reset-counter test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.id) {",
+                  "    pm.environment.set('ruleId', res.data.id);",
+                  "    console.log('✅ maintenance ruleId saved:', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lid Cycle Counter\",\n  \"group\": \"maintenance\",\n  \"trigger\": \"maintenance_lidCycleCount\",\n  \"threshold\": 1000,\n  \"action\": \"Alert when lid needs maintenance\",\n  \"enabled\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/automation-rules", "host": ["{{baseUrl}}"], "path": ["api", "automation-rules"] },
+            "description": "Run this BEFORE 'Reset Maintenance Counter'. Creates a maintenance-type rule that supports counter resets."
+          }
+        },
+        {
+          "name": "Delete Rule (Cleanup)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/automation-rules/{{ruleId}}", "host": ["{{baseUrl}}"], "path": ["api", "automation-rules", "{{ruleId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📄 Reports",
+      "item": [
+        {
+          "name": "STEP 20 — Generate Report (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.summary) {",
+                  "    console.log('✅ Report generated! Total flushes:', res.summary.totalFlushes);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"custom\",\n  \"from\": \"2026-03-01\",\n  \"to\": \"2026-03-21\",\n  \"format\": \"json\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/reports/generate", "host": ["{{baseUrl}}"], "path": ["api", "reports", "generate"] },
+            "description": "Generate a report in JSON format. Change 'format' to 'csv' or 'pdf' for other formats."
+          }
+        }
+      ]
+    }
+  ]
+}

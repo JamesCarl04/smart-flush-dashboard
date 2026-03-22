@@ -29,6 +29,8 @@ dist/
 !package.json
 !tsconfig.json
 !next.config.json
+!SmartFlush.postman_collection.json
+!SmartFlush.postman_environment.json
 
 # Debug logs
 npm-debug.log*
