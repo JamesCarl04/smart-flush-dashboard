@@ -9,7 +9,7 @@ import { app } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -99,12 +100,22 @@ export default function LoginPage() {
             <label className="label">
               <span className="label-text">Password</span>
             </label>
-            <input
-              type="password"
-              placeholder="********"
-              className={`input input-bordered ${errors.password ? 'input-error' : ''}`}
-              {...register("password")}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="********"
+                className={`input input-bordered w-full pr-10 ${errors.password ? 'input-error' : ''}`}
+                {...register("password")}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-circle"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4 opacity-50" /> : <Eye className="w-4 h-4 opacity-50" />}
+              </button>
+            </div>
             {errors.password && (
               <label className="label">
                 <span className="label-text-alt text-error">{errors.password.message}</span>

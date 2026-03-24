@@ -21,15 +21,15 @@ export interface UVCycleRow {
 }
 
 const styles = StyleSheet.create({
-  page:    { padding: 32, fontFamily: 'Helvetica' },
-  title:   { fontSize: 20, marginBottom: 16 },
-  period:  { fontSize: 11, marginBottom: 16 },
+  page: { padding: 32, fontFamily: 'Helvetica' },
+  title: { fontSize: 20, marginBottom: 16 },
+  period: { fontSize: 11, marginBottom: 16 },
   section: { marginBottom: 12 },
   heading: { fontSize: 14, marginBottom: 6, fontFamily: 'Helvetica-Bold' },
-  row:     { flexDirection: 'row', marginBottom: 4 },
-  label:   { width: 200, fontSize: 11 },
-  value:   { fontSize: 11 },
-  small:   { fontSize: 10, color: 'grey' },
+  row: { flexDirection: 'row', marginBottom: 4 },
+  label: { width: 200, fontSize: 11 },
+  value: { fontSize: 11 },
+  small: { fontSize: 10, color: 'grey' },
 });
 
 interface ReportProps {

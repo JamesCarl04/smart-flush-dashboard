@@ -23,11 +23,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const recentAlerts = alerts.slice(0, 5);
 
   const navLinks = [
-    { name: 'Dashboard',     href: '/dashboard'     },
-    { name: 'Analytics',     href: '/analytics'     },
+    { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Analytics', href: '/analytics' },
     { name: 'Configuration', href: '/configuration' },
-    { name: 'Alerts',        href: '/alerts'        },
-    { name: 'Reports',       href: '/reports'       },
+    { name: 'Alerts', href: '/alerts' },
+    { name: 'Reports', href: '/reports' },
   ];
 
   return (
@@ -117,7 +117,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* User info header */}
                 <li className="pointer-events-none">
                   <div className="flex flex-col gap-0.5 px-2 py-1">
-                    <span className="font-bold text-sm text-base-content">{user?.displayName || 'Admin'}</span>
                     <span className="text-xs text-base-content/50 truncate">{user?.email}</span>
                   </div>
                 </li>
@@ -138,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <ul className="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
           <li className="mb-4">
             <div className="flex flex-row justify-between items-center bg-transparent hover:bg-transparent cursor-default">
-              <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">S-Flush</span>
+              <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">Klir</span>
             </div>
           </li>
           <div className="divider mt-0 mb-2"></div>

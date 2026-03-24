@@ -233,22 +233,22 @@ export default function ProfilePage() {
               <label className="label" htmlFor="currentPassword">
                 <span className="label-text font-medium">Current Password</span>
               </label>
-              <div className="input input-bordered flex items-center pr-2 gap-2">
+              <div className="relative">
                 <input
                   id="currentPassword"
                   type={showCurrent ? 'text' : 'password'}
-                  className={`grow bg-transparent outline-none placeholder:text-base-content/40 ${errPassword.currentPassword ? 'text-error' : ''}`}
+                  className={`input input-bordered w-full pr-10 ${errPassword.currentPassword ? 'input-error' : ''}`}
                   placeholder="••••••••"
                   {...regPassword('currentPassword')}
                 />
-                <span
-                  role="button"
-                  tabIndex={-1}
-                  className="cursor-pointer text-base-content/50 hover:text-base-content shrink-0"
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-circle"
                   onClick={() => setShowCurrent((v) => !v)}
+                  tabIndex={-1}
                 >
-                  {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </span>
+                  {showCurrent ? <EyeOff className="w-4 h-4 opacity-50" /> : <Eye className="w-4 h-4 opacity-50" />}
+                </button>
               </div>
               {errPassword.currentPassword && (
                 <label className="label">
@@ -263,22 +263,22 @@ export default function ProfilePage() {
                 <label className="label" htmlFor="newPassword">
                   <span className="label-text font-medium">New Password</span>
                 </label>
-                <div className="input input-bordered flex items-center pr-2 gap-2">
+                <div className="relative">
                   <input
                     id="newPassword"
                     type={showNew ? 'text' : 'password'}
-                    className="grow bg-transparent outline-none placeholder:text-base-content/40"
+                    className="input input-bordered w-full pr-10"
                     placeholder="••••••••"
                     {...regPassword('newPassword')}
                   />
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    className="cursor-pointer text-base-content/50 hover:text-base-content shrink-0"
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-circle"
                     onClick={() => setShowNew((v) => !v)}
+                    tabIndex={-1}
                   >
-                    {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </span>
+                    {showNew ? <EyeOff className="w-4 h-4 opacity-50" /> : <Eye className="w-4 h-4 opacity-50" />}
+                  </button>
                 </div>
                 {errPassword.newPassword && (
                   <label className="label">
@@ -292,22 +292,22 @@ export default function ProfilePage() {
                 <label className="label" htmlFor="confirmPassword">
                   <span className="label-text font-medium">Confirm New Password</span>
                 </label>
-                <div className="input input-bordered flex items-center pr-2 gap-2">
+                <div className="relative">
                   <input
                     id="confirmPassword"
                     type={showConfirm ? 'text' : 'password'}
-                    className="grow bg-transparent outline-none placeholder:text-base-content/40"
+                    className="input input-bordered w-full pr-10"
                     placeholder="••••••••"
                     {...regPassword('confirmPassword')}
                   />
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    className="cursor-pointer text-base-content/50 hover:text-base-content shrink-0"
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-circle"
                     onClick={() => setShowConfirm((v) => !v)}
+                    tabIndex={-1}
                   >
-                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </span>
+                    {showConfirm ? <EyeOff className="w-4 h-4 opacity-50" /> : <Eye className="w-4 h-4 opacity-50" />}
+                  </button>
                 </div>
                 {errPassword.confirmPassword && (
                   <label className="label">
