@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/api-client";
 
 export type ActivityEvent = {
   id: string;
@@ -9,44 +11,57 @@ export type ActivityEvent = {
   details: string;
 };
 
-export function useActivityFeed() {
+interface SensorReading {
+  id: string;
+  sensorType: string;
+  value: number;
+  unit: string;
+  timestamp: { _seconds: number };
+}
+
+function mapReadingToActivity(r: SensorReading): ActivityEvent {
+  switch (r.sensorType) {
+    case 'waterflow':
+      return { id: r.id, type: 'flushEvent', timestamp: new Date(r.timestamp._seconds * 1000), details: `Flush: ${r.value} ${r.unit}` };
+    case 'ultrasonic':
+      return { id: r.id, type: 'lidEvent', timestamp: new Date(r.timestamp._seconds * 1000), details: `Distance: ${r.value} ${r.unit}` };
+    default:
+      return { id: r.id, type: 'uvCycle', timestamp: new Date(r.timestamp._seconds * 1000), details: `${r.sensorType}: ${r.value} ${r.unit}` };
+  }
+}
+
+export function useActivityFeed(deviceId = "toilet-01") {
+  const { user } = useAuth();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // MOCK DATA IMPLEMENTATION
-    const timer = setTimeout(() => {
-      setEvents([
-        {
-          id: '1',
-          type: 'flushEvent',
-          timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 mins ago
-          details: 'Manual flush activated',
-        },
-        {
-          id: '2',
-          type: 'lidEvent',
-          timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 mins ago
-          details: 'Lid opened',
-        },
-        {
-          id: '3',
-          type: 'lidEvent',
-          timestamp: new Date(Date.now() - 1000 * 60 * 20), // 20 mins ago
-          details: 'Lid closed',
-        },
-        {
-          id: '4',
-          type: 'uvCycle',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-          details: 'UV cycle completed',
-        }
-      ]);
-      setLoading(false);
-    }, 1200);
+  const fetchFeed = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await apiFetch<{ success: boolean; data: SensorReading[] }>(
+        `/api/sensors/${deviceId}/readings?from=${today}`,
+        user
+      );
 
-    return () => clearTimeout(timer);
-  }, []);
+      if (res.success && res.data) {
+        // Take the most recent 20 readings, newest first
+        const recent = res.data.slice(-20).reverse();
+        setEvents(recent.map(mapReadingToActivity));
+      }
+    } catch {
+      // Silently handle — feed will be empty
+    } finally {
+      setLoading(false);
+    }
+  }, [user, deviceId]);
+
+  useEffect(() => {
+    fetchFeed();
+    const interval = setInterval(fetchFeed, 15_000);
+    return () => clearInterval(interval);
+  }, [fetchFeed]);
 
   return { events, loading };
 }

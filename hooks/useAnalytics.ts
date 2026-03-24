@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { subDays, subHours, format } from "date-fns";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/api-client";
+import { format } from "date-fns";
 
 export type DateRange = {
   from: Date;
   to: Date;
 };
 
-// Mock data structures
 export type FlushCountData = { date: string; count: number };
 export type VolumeData = { date: string; liters: number };
 export type UvData = { name: string; value: number };
@@ -32,75 +33,128 @@ export type AnalyticsData = {
   };
 };
 
+// API response interfaces
+interface DashboardResponse {
+  success: boolean;
+  data: {
+    totalFlushes: number;
+    totalWaterLiters: number;
+    uvCompletionRate: number;
+    avgFlushesPerDay: number;
+    uptimePercent: number;
+  };
+}
+
+interface WaterUsageDay {
+  date: string;
+  totalVolume: number;
+  avgVolume: number;
+  flushCount: number;
+}
+
+interface WaterUsageResponse {
+  success: boolean;
+  data: WaterUsageDay[];
+}
+
+interface PatternBucket {
+  label: string;
+  count: number;
+}
+
+interface FlushPatternsResponse {
+  success: boolean;
+  data: { byDay: PatternBucket[]; byHour: PatternBucket[] };
+}
+
+interface SystemPerformanceResponse {
+  success: boolean;
+  data: {
+    uptimePercent: number;
+    onlineCount: number;
+    totalCount: number;
+  };
+}
+
 export function useAnalytics(range: DateRange) {
+  const { user } = useAuth();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchAnalytics = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
-    
-    // MOCK DATA GENERATION
-    // In a real app, this would fetch from /api/analytics/...
-    // passing the range.from and range.to
-    const timer = setTimeout(() => {
-      try {
-        const daysDiff = Math.max(1, Math.ceil((range.to.getTime() - range.from.getTime()) / (1000 * 60 * 60 * 24)));
-        
-        // Generate mock chart data based on days range
-        const mockFlushCounts: FlushCountData[] = Array.from({ length: daysDiff }).map((_, i) => ({
-          date: format(subDays(range.to, daysDiff - 1 - i), 'MMM dd'),
-          count: Math.floor(Math.random() * 50) + 10
-        }));
+    setError(null);
 
-        const mockWaterVolume: VolumeData[] = mockFlushCounts.map((f) => ({
-          date: f.date,
-          liters: Number((f.count * 1.5 + Math.random() * 5).toFixed(1))
-        }));
+    try {
+      const fromStr = format(range.from, 'yyyy-MM-dd');
+      const toStr = format(range.to, 'yyyy-MM-dd');
 
-        const totalFlushes = mockFlushCounts.reduce((acc, curr) => acc + curr.count, 0);
-        const totalWater = Number(mockWaterVolume.reduce((acc, curr) => acc + curr.liters, 0).toFixed(1));
+      const [dashboardRes, waterRes, patternsRes, perfRes] = await Promise.all([
+        apiFetch<DashboardResponse>('/api/analytics/dashboard', user),
+        apiFetch<WaterUsageResponse>(`/api/analytics/water-usage?from=${fromStr}&to=${toStr}`, user),
+        apiFetch<FlushPatternsResponse>('/api/analytics/flush-patterns', user),
+        apiFetch<SystemPerformanceResponse>('/api/analytics/system-performance', user),
+      ]);
 
-        const mockUvStats: UvData[] = [
-          { name: 'Completed', value: totalFlushes * 0.95 },
-          { name: 'Failed', value: totalFlushes * 0.05 },
-        ];
+      // Map water-usage response to chart data
+      const flushCounts: FlushCountData[] = (waterRes.data ?? []).map(d => ({
+        date: format(new Date(d.date), 'MMM dd'),
+        count: d.flushCount,
+      }));
 
-        const mockHourlyUsage: HourlyData[] = Array.from({ length: 24 }).map((_, i) => ({
-          hour: `${i.toString().padStart(2, '0')}:00`,
-          count: Math.floor(Math.random() * (i > 6 && i < 22 ? 20 : 5))
-        }));
+      const waterVolume: VolumeData[] = (waterRes.data ?? []).map(d => ({
+        date: format(new Date(d.date), 'MMM dd'),
+        liters: d.totalVolume,
+      }));
 
-        const mockUptimeStats: UptimeData[] = mockFlushCounts.map((f) => ({
-          date: f.date,
-          uptime: Number((98 + Math.random() * 2).toFixed(2))
-        }));
+      // Map flush-patterns → hourly usage
+      const hourlyUsage: HourlyData[] = (patternsRes.data?.byHour ?? []).map(b => ({
+        hour: b.label,
+        count: b.count,
+      }));
 
-        setData({
-          summary: {
-            totalFlushes,
-            totalWater,
-            uvCompletion: 95.0, // Fixed % for simplicity
-            avgFlushesPerDay: Math.floor(totalFlushes / daysDiff),
-            systemUptime: 99.7
-          },
-          charts: {
-            flushCounts: mockFlushCounts,
-            waterVolume: mockWaterVolume,
-            uvStats: mockUvStats,
-            hourlyUsage: mockHourlyUsage,
-            uptimeStats: mockUptimeStats
-          }
-        });
-      } catch (err: any) {
-        setError(err.message || 'Failed to load analytics');
-      } finally {
-        setLoading(false);
-      }
-    }, 1200);
+      // UV stats from dashboard
+      const completedUV = dashboardRes.data.uvCompletionRate;
+      const uvStats: UvData[] = [
+        { name: 'Completed', value: completedUV },
+        { name: 'Failed', value: Math.max(0, 100 - completedUV) },
+      ];
 
-    return () => clearTimeout(timer);
-  }, [range.from.getTime(), range.to.getTime()]);
+      // Uptime stats: single-entry from system-performance
+      const uptimeStats: UptimeData[] = flushCounts.map(f => ({
+        date: f.date,
+        uptime: perfRes.data.uptimePercent,
+      }));
+
+      setData({
+        summary: {
+          totalFlushes: dashboardRes.data.totalFlushes,
+          totalWater: dashboardRes.data.totalWaterLiters,
+          uvCompletion: dashboardRes.data.uvCompletionRate,
+          avgFlushesPerDay: dashboardRes.data.avgFlushesPerDay,
+          systemUptime: perfRes.data.uptimePercent,
+        },
+        charts: {
+          flushCounts,
+          waterVolume,
+          uvStats,
+          hourlyUsage,
+          uptimeStats,
+        },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load analytics';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, range.from.getTime(), range.to.getTime()]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   return { data, loading, error };
 }

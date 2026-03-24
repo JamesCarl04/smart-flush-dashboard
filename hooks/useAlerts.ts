@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { subMinutes, subHours, subDays } from "date-fns";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/api-client";
 
 export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
 
@@ -14,43 +15,59 @@ export type AlertEvent = {
   acknowledged: boolean;
 };
 
-// Global mock state to allow updates across the app (like Acknowledge)
-let mockAlertsDB: AlertEvent[] = [
-  { id: '101', title: 'Water Leak Detected', description: 'Continuous flow detected for > 5 minutes. Immediate attention required.', severity: 'critical', timestamp: subMinutes(new Date(), 12), acknowledged: false },
-  { id: '102', title: 'Offline Device', description: 'Controller lost connection to the network.', severity: 'high', timestamp: subHours(new Date(), 2), acknowledged: false },
-  { id: '103', title: 'UV Lamp Degradation', description: 'UV lamp runtime approaching 1000 hours limit.', severity: 'medium', timestamp: subDays(new Date(), 1), acknowledged: true },
-  { id: '104', title: 'Filter Maintenance', description: 'Usage counter exceeded 5000 flushes.', severity: 'low', timestamp: subDays(new Date(), 3), acknowledged: true },
-  { id: '105', title: 'Power Surge Detected', description: 'Brief interruption in power supply detected.', severity: 'high', timestamp: subDays(new Date(), 5), acknowledged: true },
-];
+interface AlertDoc {
+  id: string;
+  type: string;
+  message: string;
+  severity: string;
+  timestamp: { _seconds: number };
+  acknowledged: boolean;
+}
 
 export function useAlerts() {
+  const { user } = useAuth();
   const [alerts, setAlerts] = useState<AlertEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchAlerts = () => {
-    // Simulate latency
-    setLoading(true);
-    setTimeout(() => {
-      setAlerts([...mockAlertsDB]);
+  const fetchAlerts = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const res = await apiFetch<{ success: boolean; data: AlertDoc[] }>(
+        '/api/alerts',
+        user
+      );
+      if (res.success && res.data) {
+        setAlerts(res.data.map(a => ({
+          id: a.id,
+          title: a.type,
+          description: a.message,
+          severity: (a.severity as AlertSeverity) ?? 'low',
+          timestamp: new Date(a.timestamp._seconds * 1000),
+          acknowledged: a.acknowledged,
+        })));
+      }
+    } catch (err) {
+      console.error("[useAlerts] error:", err);
+    } finally {
       setLoading(false);
-    }, 800);
-  };
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchAlerts();
-  }, []);
+  }, [fetchAlerts]);
 
   const acknowledgeAlert = async (id: string | 'ALL') => {
+    if (!user) return false;
     try {
       if (id === 'ALL') {
-        mockAlertsDB = mockAlertsDB.map(a => ({ ...a, acknowledged: true }));
+        await apiFetch('/api/alerts/acknowledge-all', user, { method: 'POST' });
       } else {
-        const res = await fetch(`/api/alerts/${id}/acknowledge`, { method: 'POST' });
-        if (!res.ok) throw new Error();
-        mockAlertsDB = mockAlertsDB.map(a => a.id === id ? { ...a, acknowledged: true } : a);
+        await apiFetch(`/api/alerts/${id}/acknowledge`, user, { method: 'POST' });
       }
-      // Optimistic upate locally
-      setAlerts([...mockAlertsDB]);
+      // Refresh from server
+      await fetchAlerts();
       return true;
     } catch {
       return false;

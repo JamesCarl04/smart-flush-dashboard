@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { format, subDays, subMonths } from "date-fns";
+import { format } from "date-fns";
 import { FileBarChart, Download, FileText, FileSpreadsheet, FileJson, Clock, CheckCircle2 } from "lucide-react";
 
 type ReportType = 'usage_summary' | 'water_consumption' | 'alert_history' | 'maintenance_log';
@@ -14,13 +14,8 @@ export default function ReportsPage() {
   const [formatType, setFormatType] = useState<ExportFormat>('PDF');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Mock historical data
-  const recentReports = [
-    { id: '1', name: 'Monthly Usage Summary - Feb 2026', type: 'usage_summary', date: subDays(new Date(), 2), size: '2.4 MB', format: 'PDF' },
-    { id: '2', name: 'Alert History Q1 Pipeline', type: 'alert_history', date: subDays(new Date(), 5), size: '156 KB', format: 'CSV' },
-    { id: '3', name: 'Water Consumption Raw Data', type: 'water_consumption', date: subDays(new Date(), 14), size: '942 KB', format: 'JSON' },
-    { id: '4', name: 'Maintenance Log (Annual)', type: 'maintenance_log', date: subMonths(new Date(), 2), size: '1.1 MB', format: 'PDF' },
-  ];
+  // Report history — will be populated from Firestore once report generation writes records.
+  const recentReports: { id: string; name: string; type: string; date: Date; size: string; format: string }[] = [];
 
   const handleGenerate = async () => {
     setIsGenerating(true);

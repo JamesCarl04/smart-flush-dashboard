@@ -17,7 +17,7 @@ export default function AnalyticsPage() {
 
   const { data, loading, error } = useAnalytics(dateRange);
 
-  // Sync to URL conceptually (mocked for this component structure context)
+  // Sync date range to URL search params
   useEffect(() => {
     const url = new URL(window.location.href);
     url.searchParams.set('from', dateRange.from.toISOString());

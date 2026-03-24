@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useSensorData } from "@/hooks/useSensorData";
+import { useAuth } from "@/hooks/useAuth";
+import { useDeviceStatus } from "@/hooks/useDeviceStatus";
+import { apiFetch } from "@/lib/api-client";
+import { formatDistanceToNow } from "date-fns";
 import { Save, RefreshCw, Trash2, Plus, SlidersHorizontal, Settings2, Clock, AlertTriangle } from "lucide-react";
 
 type TimingConfig = {
@@ -21,18 +25,26 @@ type Rule = {
   enabled: boolean;
 };
 
+interface RuleDoc {
+  id: string;
+  group: string;
+  name: string;
+  trigger: string;
+  threshold: number;
+  action: string;
+  enabled: boolean;
+}
+
 export default function ConfigurationPage() {
+  const { user } = useAuth();
   const { ultrasonicDistance } = useSensorData();
+  const { status: deviceStatus, lastSeen, loading: deviceLoading } = useDeviceStatus();
   
   const [deviceName, setDeviceName] = useState("Men's Restroom - Stall 1");
   const [threshold, setThreshold] = useState(30);
   const [timing, setTiming] = useState<TimingConfig>({ pumpDuration: 8, uvDuration: 45, personGoneConfirm: 3 });
   
-  const [rules, setRules] = useState<Rule[]>([
-    { id: '1', group: 'alerts', name: 'Leak Detection', trigger: 'Continuous flow > 5m', basis: 'Flow sensor reading', action: 'Send Critical Alert', enabled: true },
-    { id: '2', group: 'maintenance', name: 'Filter Replacement', trigger: 'Every 5000 flushes', basis: 'Usage counter', action: 'Send Maintenance Alert', enabled: false },
-    { id: '3', group: 'maintenance', name: 'UV Lamp Degradation', trigger: '1000 hours of runtime', basis: 'Cumulative UV uptime', action: 'Order New Lamp', enabled: true },
-  ]);
+  const [rules, setRules] = useState<Rule[]>([]);
 
   const [isDirty, setIsDirty] = useState(false);
   const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -40,10 +52,31 @@ export default function ConfigurationPage() {
   // Mark form dirty when values change (simplified logic tracking main inputs)
   const markDirty = () => setIsDirty(true);
 
-  // Mock initial state loading finish
+  // Fetch automation rules from API on mount
+  const fetchRules = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await apiFetch<{ success: boolean; data: RuleDoc[] }>('/api/automation-rules', user);
+      if (res.success && res.data) {
+        setRules(res.data.map(r => ({
+          id: r.id,
+          group: (r.group as 'alerts' | 'maintenance') ?? 'alerts',
+          name: r.name,
+          trigger: r.trigger,
+          basis: `Threshold: ${r.threshold}`,
+          action: r.action,
+          enabled: r.enabled,
+        })));
+      }
+    } catch (err) {
+      console.error("[Configuration] fetch rules error:", err);
+    }
+  }, [user]);
+
   useEffect(() => {
-    setIsDirty(false); // Reset dirty flag after initial load
-  }, []);
+    fetchRules();
+    setIsDirty(false);
+  }, [fetchRules]);
 
   const handleDeviceSave = async () => {
     setSavingSection('device');
@@ -151,9 +184,8 @@ export default function ConfigurationPage() {
                 />
               </div>
               <div className="flex flex-col gap-2 justify-center pt-2">
-                <div className="text-sm"><span className="text-base-content/50 w-24 inline-block">Status:</span> <span className="badge badge-success badge-sm gap-1 ml-2">Online</span></div>
-                <div className="text-sm"><span className="text-base-content/50 w-24 inline-block">Firmware:</span> <span className="font-mono bg-base-200 px-2 py-0.5 rounded ml-2">v2.4.1</span></div>
-                <div className="text-sm"><span className="text-base-content/50 w-24 inline-block">Last Seen:</span> <span className="ml-2">2 minutes ago</span></div>
+                <div className="text-sm"><span className="text-base-content/50 w-24 inline-block">Status:</span> {deviceLoading ? <span className="ml-2 skeleton w-12 h-4 inline-block"></span> : <span className={`badge badge-sm gap-1 ml-2 ${deviceStatus === 'online' ? 'badge-success' : 'badge-error'}`}>{deviceStatus === 'online' ? 'Online' : 'Offline'}</span>}</div>
+                <div className="text-sm"><span className="text-base-content/50 w-24 inline-block">Last Seen:</span> <span className="ml-2">{deviceLoading ? <span className="skeleton w-20 h-4 inline-block"></span> : lastSeen ? formatDistanceToNow(new Date(lastSeen), { addSuffix: true }) : 'Never'}</span></div>
               </div>
             </div>
             <div className="card-actions justify-end mt-4">

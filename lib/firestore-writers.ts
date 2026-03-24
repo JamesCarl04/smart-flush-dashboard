@@ -98,7 +98,7 @@ export async function writeSensorReading(
       void incrementCounters(
         deviceId,
         isFailure ? 'ultrasonic_fail' : 'ultrasonic_ok',
-        payload
+        payload as unknown as Record<string, unknown>
       );
     }
   } catch (error) {
@@ -148,7 +148,7 @@ export async function writeLidEvent(
     console.log(`[Firestore] lidEvent written: ${payload.status}`);
     // Only count lid OPENs (each open = one full open/close cycle)
     if (payload.status === 'open') {
-      void incrementCounters(deviceId, 'lid_open', payload);
+      void incrementCounters(deviceId, 'lid_open', payload as unknown as Record<string, unknown>);
     }
   } catch (error) {
     console.error('[Firestore] writeLidEvent error:', error);
