@@ -3,6 +3,8 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { Power, Settings, Droplets, Sun, ChevronUp, ChevronDown } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { getIdToken } from "firebase/auth";
 
 export function ControlPanel() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -10,10 +12,18 @@ export function ControlPanel() {
   const handleAction = async (actionId: string, endpoint: string, payload: any = {}) => {
     setLoadingAction(actionId);
     try {
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error("You must be logged in to perform this action.");
+        return;
+      }
+      const token = await getIdToken(user);
+
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
