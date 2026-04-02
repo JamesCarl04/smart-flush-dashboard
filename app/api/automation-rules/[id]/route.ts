@@ -23,8 +23,26 @@ export async function PUT(request: Request, { params }: RouteParams): Promise<Ne
     const body = (await request.json()) as UpdateRuleBody;
     const updates: UpdateRuleBody = {};
 
-    if (body.name !== undefined) updates.name = body.name;
-    if (body.threshold !== undefined) updates.threshold = body.threshold;
+    if (body.name !== undefined) {
+      const trimmedName = body.name.trim();
+      if (!trimmedName) {
+        return NextResponse.json(
+          { success: false, error: 'Rule name is required' },
+          { status: 400 }
+        );
+      }
+      updates.name = trimmedName;
+    }
+
+    if (body.threshold !== undefined) {
+      if (!Number.isFinite(body.threshold) || body.threshold < 0) {
+        return NextResponse.json(
+          { success: false, error: 'threshold must be a valid number greater than or equal to 0' },
+          { status: 400 }
+        );
+      }
+      updates.threshold = body.threshold;
+    }
     if (body.action !== undefined) updates.action = body.action;
     if (body.enabled !== undefined) updates.enabled = body.enabled;
 

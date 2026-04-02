@@ -155,8 +155,9 @@ export async function GET(
     }));
 
     const pdfBuffer = await generatePDFBuffer(meta.from, meta.to, flushRows, uvRows);
+    const pdfBody = Uint8Array.from(pdfBuffer).buffer as ArrayBuffer;
 
-    return new Response(pdfBuffer.buffer as ArrayBuffer, {
+    return new Response(pdfBody, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}.pdf"`,

@@ -1,15 +1,12 @@
 // lib/pdf-report.tsx
-// Server-side PDF generation using @react-pdf/renderer
-// Must be imported only in nodejs runtime routes (never Edge)
-import React from 'react';
-import { Document, Page, Text, View, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
+// Server-safe PDF generation without relying on React renderers.
 
 export interface FlushEventRow {
   id: string;
   deviceId: string;
   waterVolume: number;
   duration: number;
-  timestamp: string; // ISO string
+  timestamp: string;
 }
 
 export interface UVCycleRow {
@@ -17,89 +14,263 @@ export interface UVCycleRow {
   deviceId: string;
   duration: number;
   completed: boolean;
-  timestamp: string; // ISO string
+  timestamp: string;
 }
 
-const styles = StyleSheet.create({
-  page: { padding: 32, fontFamily: 'Helvetica' },
-  title: { fontSize: 20, marginBottom: 16 },
-  period: { fontSize: 11, marginBottom: 16 },
-  section: { marginBottom: 12 },
-  heading: { fontSize: 14, marginBottom: 6, fontFamily: 'Helvetica-Bold' },
-  row: { flexDirection: 'row', marginBottom: 4 },
-  label: { width: 200, fontSize: 11 },
-  value: { fontSize: 11 },
-  small: { fontSize: 10, color: 'grey' },
-});
-
-interface ReportProps {
-  from: string;
-  to: string;
-  flushEvents: FlushEventRow[];
-  uvCycles: UVCycleRow[];
+interface PdfLine {
+  text: string;
+  fontSize: number;
+  spacingAfter?: number;
 }
 
-function ReportDocument({ from, to, flushEvents, uvCycles }: ReportProps) {
-  const totalWater = flushEvents.reduce((s, e) => s + (e.waterVolume ?? 0), 0);
-  const uvCompleted = uvCycles.filter((c) => c.completed).length;
+interface PositionedLine {
+  text: string;
+  fontSize: number;
+  x: number;
+  y: number;
+}
+
+const PAGE_WIDTH = 595;
+const PAGE_HEIGHT = 842;
+const LEFT_MARGIN = 40;
+const TOP_MARGIN_Y = 800;
+const BOTTOM_MARGIN_Y = 50;
+
+function sanitizeText(value: string): string {
+  return value
+    .replaceAll("—", "-")
+    .replaceAll("–", "-")
+    .replaceAll("…", "...")
+    .replaceAll(/[^\x20-\x7E]/g, "");
+}
+
+function escapePdfText(value: string): string {
+  return sanitizeText(value)
+    .replaceAll("\\", "\\\\")
+    .replaceAll("(", "\\(")
+    .replaceAll(")", "\\)");
+}
+
+function wrapText(text: string, maxChars: number): string[] {
+  const sanitized = sanitizeText(text).trim();
+  if (!sanitized) {
+    return [""];
+  }
+
+  const words = sanitized.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    if (candidate.length <= maxChars) {
+      currentLine = candidate;
+      continue;
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    if (word.length <= maxChars) {
+      currentLine = word;
+      continue;
+    }
+
+    let remaining = word;
+    while (remaining.length > maxChars) {
+      lines.push(remaining.slice(0, maxChars));
+      remaining = remaining.slice(maxChars);
+    }
+    currentLine = remaining;
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines.length > 0 ? lines : [""];
+}
+
+function buildReportLines(
+  from: string,
+  to: string,
+  flushEvents: FlushEventRow[],
+  uvCycles: UVCycleRow[]
+): PdfLine[] {
+  const totalWater = flushEvents.reduce((sum, event) => sum + (event.waterVolume ?? 0), 0);
+  const completedUvCycles = uvCycles.filter((cycle) => cycle.completed).length;
   const uvRate =
-    uvCycles.length === 0 ? '100%' : `${Math.round((uvCompleted / uvCycles.length) * 100)}%`;
+    uvCycles.length === 0 ? "100%" : `${Math.round((completedUvCycles / uvCycles.length) * 100)}%`;
 
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>Smart Flush System Report</Text>
-        <Text style={styles.period}>Period: {from} to {to}</Text>
+  const lines: PdfLine[] = [
+    { text: "Smart Flush System Report", fontSize: 20, spacingAfter: 10 },
+    { text: `Period: ${from} to ${to}`, fontSize: 11, spacingAfter: 14 },
+    { text: "Summary", fontSize: 14, spacingAfter: 6 },
+    { text: `Total Flushes: ${flushEvents.length}`, fontSize: 11 },
+    { text: `Total Water Used: ${Math.round(totalWater * 100) / 100} L`, fontSize: 11 },
+    { text: `UV Cycles: ${uvCycles.length}`, fontSize: 11 },
+    { text: `UV Completion Rate: ${uvRate}`, fontSize: 11, spacingAfter: 14 },
+    { text: `Flush Events (${flushEvents.length})`, fontSize: 14, spacingAfter: 6 },
+  ];
 
-        <View style={styles.section}>
-          <Text style={styles.heading}>Summary</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Total Flushes:</Text>
-            <Text style={styles.value}>{flushEvents.length}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Total Water Used:</Text>
-            <Text style={styles.value}>{Math.round(totalWater * 100) / 100} L</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>UV Cycles:</Text>
-            <Text style={styles.value}>{uvCycles.length}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>UV Completion Rate:</Text>
-            <Text style={styles.value}>{uvRate}</Text>
-          </View>
-        </View>
+  if (flushEvents.length === 0) {
+    lines.push({ text: "No flush events were recorded for this period.", fontSize: 11, spacingAfter: 10 });
+  } else {
+    for (const event of flushEvents.slice(0, 20)) {
+      lines.push({
+        text: `${event.timestamp.slice(0, 16)}  ${event.deviceId}  ${event.waterVolume} L  ${event.duration}s`,
+        fontSize: 10,
+      });
+    }
 
-        <View style={styles.section}>
-          <Text style={styles.heading}>Flush Events ({flushEvents.length})</Text>
-          {flushEvents.slice(0, 20).map((e) => (
-            <View key={e.id} style={styles.row}>
-              <Text style={styles.label}>{e.timestamp.slice(0, 16)}</Text>
-              <Text style={styles.value}>{e.waterVolume} L — {e.duration}s</Text>
-            </View>
-          ))}
-          {flushEvents.length > 20 && (
-            <Text style={styles.small}>… and {flushEvents.length - 20} more</Text>
-          )}
-        </View>
-      </Page>
-    </Document>
-  );
+    if (flushEvents.length > 20) {
+      lines.push({
+        text: `... and ${flushEvents.length - 20} more flush events`,
+        fontSize: 10,
+        spacingAfter: 10,
+      });
+    } else {
+      lines.push({ text: "", fontSize: 10, spacingAfter: 10 });
+    }
+  }
+
+  lines.push({ text: `UV Cycles (${uvCycles.length})`, fontSize: 14, spacingAfter: 6 });
+
+  if (uvCycles.length === 0) {
+    lines.push({ text: "No UV cycles were recorded for this period.", fontSize: 11 });
+  } else {
+    for (const cycle of uvCycles.slice(0, 12)) {
+      lines.push({
+        text: `${cycle.timestamp.slice(0, 16)}  ${cycle.deviceId}  ${cycle.completed ? "Completed" : "Failed"}  ${cycle.duration}s`,
+        fontSize: 10,
+      });
+    }
+
+    if (uvCycles.length > 12) {
+      lines.push({
+        text: `... and ${uvCycles.length - 12} more UV cycles`,
+        fontSize: 10,
+      });
+    }
+  }
+
+  return lines;
 }
 
-/**
- * Renders the report PDF and returns a Uint8Array buffer.
- * Call only from nodejs-runtime API routes.
- */
+function paginateLines(lines: PdfLine[]): PositionedLine[][] {
+  const pages: PositionedLine[][] = [[]];
+  let pageIndex = 0;
+  let currentY = TOP_MARGIN_Y;
+
+  for (const line of lines) {
+    const wrappedLines = wrapText(line.text, line.fontSize >= 14 ? 64 : 90);
+    const lineHeight = line.fontSize + 4;
+
+    for (const wrappedLine of wrappedLines) {
+      if (currentY - lineHeight < BOTTOM_MARGIN_Y) {
+        pages.push([]);
+        pageIndex += 1;
+        currentY = TOP_MARGIN_Y;
+      }
+
+      pages[pageIndex].push({
+        text: wrappedLine,
+        fontSize: line.fontSize,
+        x: LEFT_MARGIN,
+        y: currentY,
+      });
+      currentY -= lineHeight;
+    }
+
+    currentY -= line.spacingAfter ?? 0;
+  }
+
+  return pages;
+}
+
+function buildContentStream(lines: PositionedLine[]): string {
+  return lines
+    .map((line) => {
+      const text = escapePdfText(line.text);
+      return [
+        "BT",
+        `/F1 ${line.fontSize} Tf`,
+        `1 0 0 1 ${line.x} ${line.y} Tm`,
+        `(${text}) Tj`,
+        "ET",
+      ].join("\n");
+    })
+    .join("\n");
+}
+
+function buildPdfBuffer(pages: PositionedLine[][]): Uint8Array {
+  const objects = new Map<number, string>();
+  const pageObjectNumbers: number[] = [];
+  const maxObjectNumber = 3 + pages.length * 2;
+
+  objects.set(1, "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  objects.set(3, "3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n");
+
+  let objectNumber = 4;
+  for (const pageLines of pages) {
+    const pageObjectNumber = objectNumber;
+    const contentObjectNumber = objectNumber + 1;
+    objectNumber += 2;
+
+    pageObjectNumbers.push(pageObjectNumber);
+
+    const contentStream = buildContentStream(pageLines);
+    const contentLength = Buffer.byteLength(contentStream, "utf8");
+
+    objects.set(
+      pageObjectNumber,
+      `${pageObjectNumber} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectNumber} 0 R >>\nendobj\n`
+    );
+    objects.set(
+      contentObjectNumber,
+      `${contentObjectNumber} 0 obj\n<< /Length ${contentLength} >>\nstream\n${contentStream}\nendstream\nendobj\n`
+    );
+  }
+
+  objects.set(
+    2,
+    `2 0 obj\n<< /Type /Pages /Kids [${pageObjectNumbers.map((pageNumber) => `${pageNumber} 0 R`).join(" ")}] /Count ${pageObjectNumbers.length} >>\nendobj\n`
+  );
+
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = new Array(maxObjectNumber + 1).fill(0);
+
+  for (let index = 1; index <= maxObjectNumber; index += 1) {
+    const object = objects.get(index);
+    if (!object) {
+      continue;
+    }
+
+    offsets[index] = Buffer.byteLength(pdf, "utf8");
+    pdf += object;
+  }
+
+  const xrefOffset = Buffer.byteLength(pdf, "utf8");
+  pdf += `xref\n0 ${maxObjectNumber + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+
+  for (let index = 1; index <= maxObjectNumber; index += 1) {
+    pdf += `${offsets[index].toString().padStart(10, "0")} 00000 n \n`;
+  }
+
+  pdf += `trailer\n<< /Size ${maxObjectNumber + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return Uint8Array.from(Buffer.from(pdf, "utf8"));
+}
+
 export async function generatePDFBuffer(
   from: string,
   to: string,
   flushEvents: FlushEventRow[],
   uvCycles: UVCycleRow[]
 ): Promise<Uint8Array> {
-  const buffer = await renderToBuffer(
-    <ReportDocument from={from} to={to} flushEvents={flushEvents} uvCycles={uvCycles} />
-  );
-  return new Uint8Array(buffer);
+  const lines = buildReportLines(from, to, flushEvents, uvCycles);
+  const pages = paginateLines(lines);
+  return buildPdfBuffer(pages);
 }

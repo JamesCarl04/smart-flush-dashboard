@@ -60,7 +60,7 @@ const STATE_VISUALS: Record<
 
 export function StatCards() {
   const { ultrasonicDistance, waterFlowRate, loading: sensorLoading } = useSensorData();
-  const { status: deviceStatus, lastSeen, loading: deviceLoading } = useDeviceStatus();
+  const { connected, lastSeen, reason: deviceReason, loading: deviceLoading } = useDeviceStatus();
   const { systemState, loading: systemLoading } = useSystemState();
   const [now, setNow] = useState(() => Date.now());
   const [cardsVisible, setCardsVisible] = useState(false);
@@ -142,15 +142,19 @@ export function StatCards() {
             ) : (
               <>
                 <div className="mb-2 flex h-9 items-center gap-2">
-                  {deviceStatus === "online" ? (
-                    <div className="badge badge-success badge-lg px-3 py-3 font-semibold text-white">Online</div>
+                  {connected ? (
+                    <div className="badge badge-success badge-lg px-3 py-3 font-semibold text-white">Connected</div>
                   ) : (
-                    <div className="badge badge-error badge-lg px-3 py-3 font-semibold text-white">Offline</div>
+                    <div className="badge badge-error badge-lg px-3 py-3 font-semibold text-white">Disconnected</div>
                   )}
                 </div>
-                <div className="mt-2 text-xs font-medium text-base-content/60">
-                  Last seen {secondsAgo} seconds ago
-                </div>
+                {lastSeen ? (
+                  <div className="mt-2 text-xs font-medium text-base-content/60">
+                    Last seen {secondsAgo} seconds ago
+                  </div>
+                ) : (
+                  <div className="mt-2 text-xs font-medium text-base-content/60">{deviceReason}</div>
+                )}
               </>
             )}
           </div>

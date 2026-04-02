@@ -1,48 +1,98 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/api-client";
+import { DEFAULT_DEVICE_ID } from "@/lib/device-constants";
+import { getErrorMessage } from "@/lib/error-utils";
 
-export function useDeviceStatus(deviceId = "toilet-01") {
+interface DeviceStatusResponse {
+  success: boolean;
+  data: {
+    deviceId: string;
+    exists: boolean;
+    connected: boolean;
+    status: "online" | "offline";
+    lastSeenMs: number | null;
+    staleMs: number | null;
+    reason: string;
+  };
+}
+
+interface DeviceStatusState {
+  connected: boolean;
+  status: "online" | "offline";
+  lastSeen: number | null;
+  staleMs: number | null;
+  reason: string;
+}
+
+const DEFAULT_STATUS_STATE: DeviceStatusState = {
+  connected: false,
+  status: "offline",
+  lastSeen: null,
+  staleMs: null,
+  reason: "ESP32 not connected",
+};
+
+export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID) {
   const { user } = useAuth();
-  const [data, setData] = useState<{ status: 'online' | 'offline'; lastSeen: number } | null>(null);
+  const [data, setData] = useState<DeviceStatusState>(DEFAULT_STATUS_STATE);
   const [loading, setLoading] = useState(true);
 
-  const fetchStatus = useCallback(async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      const token = await user.getIdToken();
-      const res = await fetch(`/api/devices/${deviceId}/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  useEffect(() => {
+    let cancelled = false;
 
-      if (res.status === 404) {
-        // Device doesn't exist in Firestore yet — show offline
-        setData({ status: 'offline', lastSeen: 0 });
+    const fetchStatus = async (showLoading: boolean) => {
+      if (!user) {
+        if (!cancelled) {
+          setData(DEFAULT_STATUS_STATE);
+          setLoading(false);
+        }
         return;
       }
 
-      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      try {
+        if (showLoading && !cancelled) {
+          setLoading(true);
+        }
 
-      const json = await res.json();
-      if (json.success && json.data) {
-        setData({
-          status: json.data.status,
-          lastSeen: json.data.lastSeen?._seconds ? json.data.lastSeen._seconds * 1000 : Date.now(),
-        });
+        const response = await apiFetch<DeviceStatusResponse>(`/api/devices/${deviceId}/status`, user);
+
+        if (!cancelled) {
+          setData({
+            connected: response.data.connected,
+            status: response.data.status,
+            lastSeen: response.data.lastSeenMs,
+            staleMs: response.data.staleMs,
+            reason: response.data.reason,
+          });
+        }
+      } catch (error) {
+        console.error("[useDeviceStatus] error:", error);
+        if (!cancelled) {
+          setData({
+            ...DEFAULT_STATUS_STATE,
+            reason: getErrorMessage(error) ?? DEFAULT_STATUS_STATE.reason,
+          });
+        }
+      } finally {
+        if (showLoading && !cancelled) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      console.error("[useDeviceStatus] error:", err);
-      setData({ status: 'offline', lastSeen: 0 });
-    } finally {
-      setLoading(false);
-    }
-  }, [user, deviceId]);
+    };
 
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    void fetchStatus(true);
+    const intervalId = window.setInterval(() => {
+      void fetchStatus(false);
+    }, 10_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [deviceId, user]);
 
   return { ...data, loading };
 }

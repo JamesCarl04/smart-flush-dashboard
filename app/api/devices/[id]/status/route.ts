@@ -1,7 +1,7 @@
 // app/api/devices/[id]/status/route.ts
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuthToken } from '@/lib/auth-helpers';
+import { getDeviceConnectionState } from '@/lib/device-connection';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -13,18 +13,10 @@ export async function GET(request: Request, { params }: RouteParams): Promise<Ne
     await verifyAuthToken(request);
     const { id } = await params;
 
-    const doc = await adminDb.collection('devices').doc(id).get();
-    if (!doc.exists) {
-      return NextResponse.json({ success: false, error: 'Device not found' }, { status: 404 });
-    }
-
-    const data = doc.data();
+    const data = await getDeviceConnectionState(id);
     return NextResponse.json({
       success: true,
-      data: {
-        status: data?.status ?? 'offline',
-        lastSeen: data?.lastSeen ?? null,
-      },
+      data,
     });
   } catch (error) {
     if (error instanceof Response) return new NextResponse(error.body, error);

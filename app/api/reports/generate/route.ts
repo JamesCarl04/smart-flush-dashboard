@@ -1,6 +1,5 @@
 // app/api/reports/generate/route.ts
 // POST /api/reports/generate — generates CSV, JSON, or PDF reports from Firestore data
-// Forced to nodejs runtime because @react-pdf/renderer requires Node.js APIs
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
@@ -30,6 +29,14 @@ interface UVCycleDoc {
   duration: number;
   completed: boolean;
   timestamp: Timestamp;
+}
+
+function parseDateBoundary(date: string, boundary: 'start' | 'end'): Date | null {
+  const candidate = new Date(
+    `${date}T${boundary === 'start' ? '00:00:00.000' : '23:59:59.999'}Z`
+  );
+
+  return Number.isNaN(candidate.getTime()) ? null : candidate;
 }
 
 // ─── Data fetcher ─────────────────────────────────────────────────────────────
@@ -129,8 +136,24 @@ export async function POST(request: Request): Promise<NextResponse | Response> {
       );
     }
 
-    const fromTs = Timestamp.fromDate(new Date(`${from}T00:00:00.000Z`));
-    const toTs = Timestamp.fromDate(new Date(`${to}T23:59:59.999Z`));
+    const fromDate = parseDateBoundary(from, 'start');
+    const toDate = parseDateBoundary(to, 'end');
+    if (!fromDate || !toDate) {
+      return NextResponse.json(
+        { success: false, error: 'from and to must be valid dates in YYYY-MM-DD format' },
+        { status: 400 }
+      );
+    }
+
+    if (fromDate.getTime() > toDate.getTime()) {
+      return NextResponse.json(
+        { success: false, error: 'The end date must be on or after the start date' },
+        { status: 400 }
+      );
+    }
+
+    const fromTs = Timestamp.fromDate(fromDate);
+    const toTs = Timestamp.fromDate(toDate);
 
     const { flushEvents, uvCycles } = await fetchReportData(fromTs, toTs);
 
@@ -187,7 +210,8 @@ export async function POST(request: Request): Promise<NextResponse | Response> {
     }));
 
     const pdfBuffer = await generatePDFBuffer(from, to, flushRows, uvRows);
-    return new Response(pdfBuffer.buffer as ArrayBuffer, {
+    const pdfBody = Uint8Array.from(pdfBuffer).buffer as ArrayBuffer;
+    return new Response(pdfBody, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="smart-flush-${from}-${to}.pdf"`,
@@ -196,6 +220,12 @@ export async function POST(request: Request): Promise<NextResponse | Response> {
   } catch (error) {
     if (error instanceof Response) return error;
     console.error('[Reports] generate error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to generate report' }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate report',
+      },
+      { status: 500 }
+    );
   }
 }

@@ -33,10 +33,18 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const body = (await request.json()) as Partial<CreateRuleBody>;
     const { name, group, trigger, threshold, action, enabled } = body;
+    const trimmedName = name?.trim();
 
-    if (!name || !group || !trigger || threshold === undefined || !action) {
+    if (!trimmedName || !group || !trigger || threshold === undefined || !action) {
       return NextResponse.json(
         { success: false, error: 'name, group, trigger, threshold, and action are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!Number.isFinite(threshold) || threshold < 0) {
+      return NextResponse.json(
+        { success: false, error: 'threshold must be a valid number greater than or equal to 0' },
         { status: 400 }
       );
     }
@@ -44,7 +52,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const docRef = adminDb.collection('automationRules').doc();
     await docRef.set({
       id: docRef.id,
-      name,
+      name: trimmedName,
       group,
       trigger,
       threshold,

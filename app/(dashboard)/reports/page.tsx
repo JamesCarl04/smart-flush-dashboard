@@ -14,6 +14,8 @@ import {
   CalendarRange,
   FileX,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { getErrorMessage } from "@/lib/error-utils";
 
 type ReportType = "usage_summary" | "daily" | "weekly" | "monthly" | "custom";
 type DateRangeOption = "last_7_days" | "last_30_days" | "this_month" | "last_month";
@@ -36,6 +38,7 @@ const RANGE_OPTIONS: { label: string; value: DateRangeOption }[] = [
 ];
 
 export default function ReportsPage() {
+  const { user } = useAuth();
   const [reportType, setReportType] = useState<ReportType>("usage_summary");
   const [dateRange, setDateRange] = useState<DateRangeOption>("last_7_days");
   const [formatType, setFormatType] = useState<ExportFormat>("PDF");
@@ -74,6 +77,11 @@ export default function ReportsPage() {
   }, [customRange, dateRange, isCustomRange]);
 
   const handleGenerate = async () => {
+    if (!user) {
+      toast.error("You must be logged in to generate reports.");
+      return;
+    }
+
     if (hasInvalidCustomRange) {
       toast.error("The end date must be on or after the start date.");
       return;
@@ -81,10 +89,14 @@ export default function ReportsPage() {
 
     setIsGenerating(true);
     try {
+      const token = await user.getIdToken();
       const requestType: RequestReportType = reportType === "usage_summary" ? "custom" : reportType;
       const res = await fetch("/api/reports/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           type: requestType,
           from: resolvedRange.from,
@@ -93,7 +105,16 @@ export default function ReportsPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to generate report");
+      if (!res.ok) {
+        const contentType = res.headers.get("Content-Type") ?? "";
+        if (contentType.includes("application/json")) {
+          const body = (await res.json()) as { error?: string };
+          throw new Error(body.error ?? `Failed to generate report (${res.status})`);
+        }
+
+        const text = await res.text();
+        throw new Error(text || `Failed to generate report (${res.status})`);
+      }
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -113,8 +134,8 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(url);
 
       toast.success("Report generated successfully");
-    } catch {
-      toast.error("Failed to generate report");
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? "Failed to generate report");
     } finally {
       setIsGenerating(false);
     }

@@ -10,6 +10,7 @@ interface ConfigUpdate {
   pumpDuration: number;
   uvDuration: number;
   threshold: number;
+  personGoneConfirm: number;
 }
 
 function publish(topic: string, payload: string): Promise<void> {

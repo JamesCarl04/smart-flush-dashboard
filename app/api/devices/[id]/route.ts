@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuthToken } from '@/lib/auth-helpers';
+import { FieldValue } from 'firebase-admin/firestore';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -41,9 +42,31 @@ export async function PUT(request: Request, { params }: RouteParams): Promise<Ne
     const body = (await request.json()) as UpdateDeviceBody;
     const updates: UpdateDeviceBody = {};
 
-    if (body.name !== undefined) updates.name = body.name;
-    if (body.description !== undefined) updates.description = body.description;
-    if (body.config !== undefined) updates.config = body.config;
+    if (body.name !== undefined) {
+      const trimmedName = body.name.trim();
+      if (!trimmedName) {
+        return NextResponse.json(
+          { success: false, error: 'Device name is required' },
+          { status: 400 }
+        );
+      }
+      updates.name = trimmedName;
+    }
+
+    if (body.description !== undefined) {
+      updates.description = body.description.trim();
+    }
+
+    if (body.config !== undefined) {
+      if (typeof body.config !== 'object' || body.config === null || Array.isArray(body.config)) {
+        return NextResponse.json(
+          { success: false, error: 'config must be an object' },
+          { status: 400 }
+        );
+      }
+
+      updates.config = body.config;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
@@ -54,11 +77,15 @@ export async function PUT(request: Request, { params }: RouteParams): Promise<Ne
 
     const docRef = adminDb.collection('devices').doc(id);
     const doc = await docRef.get();
-    if (!doc.exists) {
-      return NextResponse.json({ success: false, error: 'Device not found' }, { status: 404 });
-    }
-
-    await docRef.update(updates as Record<string, unknown>);
+    await docRef.set(
+      {
+        id,
+        ...updates,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(doc.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      },
+      { merge: true }
+    );
     const updated = await docRef.get();
 
     return NextResponse.json({ success: true, data: updated.data() });
