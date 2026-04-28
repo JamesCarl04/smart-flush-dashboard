@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePresentationMode } from '@/hooks/usePresentationMode';
 import { apiFetch } from '@/lib/api-client';
 
 type SystemState = 'standby' | 'lid_open' | 'flushing' | 'uv_active';
@@ -14,11 +15,18 @@ interface SensorReading {
 
 export function useSystemState(deviceId = 'toilet-01') {
   const { user, loading: authLoading } = useAuth();
+  const presentationMode = usePresentationMode();
   const [systemState, setSystemState] = useState<SystemState>('standby');
   const [loading, setLoading] = useState(true);
 
   const fetchState = useCallback(
     async (showLoading = false) => {
+      if (presentationMode) {
+        setSystemState('standby');
+        setLoading(false);
+        return;
+      }
+
       if (authLoading) {
         return;
       }
@@ -60,7 +68,7 @@ export function useSystemState(deviceId = 'toilet-01') {
         }
       }
     },
-    [authLoading, deviceId, user],
+    [authLoading, deviceId, presentationMode, user],
   );
 
   useEffect(() => {

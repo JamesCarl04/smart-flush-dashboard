@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePresentationMode } from '@/hooks/usePresentationMode';
 import { apiFetch } from '@/lib/api-client';
 
 export type ActivityEvent = {
@@ -47,11 +48,38 @@ function mapReadingToActivity(reading: SensorReading): ActivityEvent {
 
 export function useActivityFeed(deviceId = 'toilet-01') {
   const { user, loading: authLoading } = useAuth();
+  const presentationMode = usePresentationMode();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchFeed = useCallback(
     async (showLoading = false) => {
+      if (presentationMode) {
+        const now = Date.now();
+        setEvents([
+          {
+            id: 'demo-1',
+            type: 'flushEvent',
+            timestamp: new Date(now - 2 * 60 * 1000),
+            details: 'Flush: 2.5 L',
+          },
+          {
+            id: 'demo-2',
+            type: 'lidEvent',
+            timestamp: new Date(now - 6 * 60 * 1000),
+            details: 'Distance: 24 cm',
+          },
+          {
+            id: 'demo-3',
+            type: 'uvCycle',
+            timestamp: new Date(now - 12 * 60 * 1000),
+            details: 'uv: 30 s',
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+
       if (authLoading) {
         return;
       }
@@ -87,7 +115,7 @@ export function useActivityFeed(deviceId = 'toilet-01') {
         }
       }
     },
-    [authLoading, deviceId, user],
+    [authLoading, deviceId, presentationMode, user],
   );
 
   useEffect(() => {

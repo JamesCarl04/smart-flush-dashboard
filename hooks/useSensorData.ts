@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePresentationMode } from '@/hooks/usePresentationMode';
 import { apiFetch } from '@/lib/api-client';
 
 interface SensorReading {
@@ -13,6 +14,7 @@ interface SensorReading {
 
 export function useSensorData(deviceId = 'toilet-01') {
   const { user, loading: authLoading } = useAuth();
+  const presentationMode = usePresentationMode();
   const [data, setData] = useState<{
     ultrasonicDistance: number;
     waterFlowRate: number;
@@ -22,6 +24,20 @@ export function useSensorData(deviceId = 'toilet-01') {
 
   const fetchSensors = useCallback(
     async (showLoading = false) => {
+      if (presentationMode) {
+        const now = new Date();
+        const distanceOffset = now.getSeconds() % 4;
+        const waterOffset = (now.getSeconds() % 3) * 0.1;
+
+        setData({
+          ultrasonicDistance: 22 + distanceOffset,
+          waterFlowRate: 2.4 + waterOffset,
+        });
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
       if (authLoading) {
         return;
       }
@@ -72,7 +88,7 @@ export function useSensorData(deviceId = 'toilet-01') {
         }
       }
     },
-    [authLoading, deviceId, user],
+    [authLoading, deviceId, presentationMode, user],
   );
 
   useEffect(() => {

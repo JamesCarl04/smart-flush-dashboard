@@ -4,7 +4,10 @@ import type { NextRequest } from 'next/server';
 export function proxy(request: NextRequest) {
   // Using a cookie to check auth state because middleware runs on edge
   const token = request.cookies.get('auth-token')?.value;
-  const { pathname } = request.nextUrl;
+  const presentationCookie = request.cookies.get('presentation-mode')?.value;
+  const { pathname, searchParams } = request.nextUrl;
+  const presentationMode =
+    searchParams.get('demo') === '1' || presentationCookie === '1';
 
   const isAuthPage =
     pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register');
@@ -17,12 +20,24 @@ export function proxy(request: NextRequest) {
   // Redirect root to dashboard (auth middleware below handles unauthenticated case)
   if (pathname === '/') {
     return NextResponse.redirect(
-      new URL(token ? '/dashboard' : '/auth/login', request.url),
+      new URL(
+        presentationMode
+          ? '/dashboard?demo=1'
+          : token
+            ? '/dashboard'
+            : '/auth/login',
+        request.url,
+      ),
     );
   }
 
   // Redirect unauthenticated users to /auth/login
-  if (!token && !isAuthPage && !pathname.startsWith('/auth/forgot-password')) {
+  if (
+    !token &&
+    !presentationMode &&
+    !isAuthPage &&
+    !pathname.startsWith('/auth/forgot-password')
+  ) {
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
