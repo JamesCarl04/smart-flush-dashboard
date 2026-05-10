@@ -26,6 +26,15 @@ const USERNAME = process.env.MQTT_USERNAME;
 const PASSWORD = process.env.MQTT_PASSWORD;
 const PORT = process.env.MQTT_PORT ?? '8883';
 
+function buildBrokerUrl(hostOrUrl: string, port: string): string {
+  const value = hostOrUrl.trim();
+  if (/^mqtts?:\/\//i.test(value)) {
+    return value;
+  }
+
+  return `mqtts://${value}:${port.trim() || '8883'}`;
+}
+
 // ─── Timestamp helper ─────────────────────────────────────────────────────────
 
 function ts(): string {
@@ -109,13 +118,13 @@ export function getMqttClient(): MqttClient {
     process.exit(1);
   }
 
-  const brokerUrl = `mqtts://${BROKER_URL}:${PORT}`;
+  const brokerUrl = buildBrokerUrl(BROKER_URL, PORT);
   console.log(`[${ts()}] [MQTT] Connecting to ${brokerUrl} …`);
 
   client = mqtt.connect(brokerUrl, {
     username: USERNAME,
     password: PASSWORD,
-    rejectUnauthorized: false, // Prototype — HiveMQ Cloud uses valid certs but Railway may not resolve them
+    rejectUnauthorized: true,
     reconnectPeriod: 5000, // 5 s between reconnect attempts
     connectTimeout: 10_000,
   });

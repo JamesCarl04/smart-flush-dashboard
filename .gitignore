@@ -18,17 +18,17 @@ dist/
 
 # Environment variables — NEVER commit these!
 .env
-.env.local
-.env*.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+!**/.env.example
 
 # Firebase service account keys
 *.json
 !package.json
 !package-lock.json
 !*/package-lock.json
+!railway.json
+!**/railway.json
 !tsconfig.json
 !next.config.json
 !SmartFlush.postman_collection.json
@@ -58,7 +58,6 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
-next-env.d.ts
 
 # Editor
 .vscode/
