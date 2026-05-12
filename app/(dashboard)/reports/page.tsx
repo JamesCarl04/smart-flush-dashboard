@@ -290,7 +290,7 @@ export default function ReportsPage() {
               {isCustomRange ? (
                 <div className="space-y-4 rounded-xl border border-base-200 bg-base-200/30 p-4">
                   <div className="flex items-center gap-2 text-sm font-semibold text-base-content/70">
-                    <CalendarRange className="h-4 w-4 text-primary" />
+                    <CalendarRange className="h-4 w-4 text-primary" /> )
                     Custom Range
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
