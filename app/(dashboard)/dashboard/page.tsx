@@ -1,6 +1,8 @@
 import { StatCards } from '@/components/dashboard/StatCards';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { ControlPanel } from '@/components/dashboard/ControlPanel';
+import { MaintenanceTaskPanel } from '@/components/dashboard/MaintenanceTaskPanel';
+import { Toaster } from 'react-hot-toast';
 
 export default function DashboardPage() {
   return (
@@ -31,6 +33,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ROW 4 */}
+      <div className="mt-8">
+        <MaintenanceTaskPanel />
+      </div>
+
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
     </div>
   );
 }
