@@ -17,14 +17,25 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { getErrorMessage } from '@/lib/error-utils';
 
-type ReportType = 'usage_summary' | 'daily' | 'weekly' | 'monthly' | 'custom';
+type ReportType =
+  | 'usage_summary'
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'custom'
+  | 'maintenance_tasks';
 type DateRangeOption =
   | 'last_7_days'
   | 'last_30_days'
   | 'this_month'
   | 'last_month';
 type ExportFormat = 'PDF' | 'CSV' | 'JSON';
-type RequestReportType = 'daily' | 'weekly' | 'monthly' | 'custom';
+type RequestReportType =
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'custom'
+  | 'maintenance_tasks';
 
 const REPORT_TYPE_OPTIONS: { label: string; value: ReportType }[] = [
   { label: 'Usage Summary', value: 'usage_summary' },
@@ -32,6 +43,7 @@ const REPORT_TYPE_OPTIONS: { label: string; value: ReportType }[] = [
   { label: 'Weekly Report', value: 'weekly' },
   { label: 'Monthly Report', value: 'monthly' },
   { label: 'Custom Range', value: 'custom' },
+  { label: 'Maintenance Task Report', value: 'maintenance_tasks' },
 ];
 
 const RANGE_OPTIONS: { label: string; value: DateRangeOption }[] = [
@@ -60,12 +72,13 @@ export default function ReportsPage() {
     size: string;
     format: string;
   }[] = [];
-  const isCustomRange = reportType === 'custom';
-  const hasInvalidCustomRange =
-    isCustomRange && customRange.from > customRange.to;
+  const isMaintenanceTaskReport = reportType === 'maintenance_tasks';
+  const usesExplicitRange = reportType === 'custom' || isMaintenanceTaskReport;
+  const hasInvalidDateRange =
+    usesExplicitRange && customRange.from > customRange.to;
 
   const resolvedRange = useMemo(() => {
-    if (isCustomRange) {
+    if (usesExplicitRange) {
       return customRange;
     }
 
@@ -95,7 +108,7 @@ export default function ReportsPage() {
           to: format(now, 'yyyy-MM-dd'),
         };
     }
-  }, [customRange, dateRange, isCustomRange]);
+  }, [customRange, dateRange, usesExplicitRange]);
 
   const handleGenerate = async () => {
     if (!user) {
@@ -103,7 +116,7 @@ export default function ReportsPage() {
       return;
     }
 
-    if (hasInvalidCustomRange) {
+    if (hasInvalidDateRange) {
       toast.error('The end date must be on or after the start date.');
       return;
     }
@@ -187,13 +200,72 @@ export default function ReportsPage() {
             </h2>
           </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleGenerate();
-            }}
-          >
-            <div className="space-y-6 p-6">
+          <div className="space-y-6 p-6">
+            <div className="form-control w-full">
+              <label className="label">
+                <span className="label-text font-medium text-base-content/80">
+                  Report Type
+                </span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={reportType}
+                onChange={(event) => setReportType(event.target.value as ReportType)}
+              >
+                {REPORT_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {usesExplicitRange ? (
+              <div className="space-y-4 rounded-xl border border-base-200 bg-base-200/30 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-base-content/70">
+                  <CalendarRange className="h-4 w-4 text-primary" />
+                  {isMaintenanceTaskReport ? 'Task Date Range' : 'Custom Range'}
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="form-control w-full">
+                    <label className="label">
+                      <span className="label-text font-medium text-base-content/80">
+                        From Date
+                      </span>
+                    </label>
+                    <input
+                      type="date"
+                      className="input input-bordered w-full"
+                      value={customRange.from}
+                      onChange={(event) =>
+                        setCustomRange((current) => ({
+                          ...current,
+                          from: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="form-control w-full">
+                    <label className="label">
+                      <span className="label-text font-medium text-base-content/80">
+                        To Date
+                      </span>
+                    </label>
+                    <input
+                      type="date"
+                      className="input input-bordered w-full"
+                      value={customRange.to}
+                      onChange={(event) =>
+                        setCustomRange((current) => ({
+                          ...current,
+                          to: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text font-medium text-base-content/80">
@@ -202,8 +274,10 @@ export default function ReportsPage() {
                 </label>
                 <select
                   className="select select-bordered w-full"
-                  value={reportType}
-                  onChange={(e) => setReportType(e.target.value as ReportType)}
+                  value={dateRange}
+                  onChange={(event) =>
+                    setDateRange(event.target.value as DateRangeOption)
+                  }
                 >
                   {REPORT_TYPE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -316,29 +390,28 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="btn btn-primary h-12 w-full shadow-lg"
-                  disabled={isGenerating || hasInvalidCustomRange}
-                >
-                  {isGenerating ? (
-                    <>
-                      <span className="loading loading-spinner loading-sm"></span>
-                      Generating File...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="mr-1 h-5 w-5" />
-                      Generate & Download
-                    </>
-                  )}
-                </button>
-                <p className="mt-3 flex items-center justify-center gap-1 text-center text-xs text-base-content/40">
-                  <CheckCircle2 className="h-3 w-3 text-success" /> Securely
-                  generated over HTTPS
-                </p>
-              </div>
+            <div className="pt-2">
+              <button
+                className="btn btn-primary h-12 w-full shadow-lg"
+                onClick={handleGenerate}
+                disabled={isGenerating || hasInvalidDateRange}
+              >
+                {isGenerating ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Generating File...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-1 h-5 w-5" />
+                    Generate & Download
+                  </>
+                )}
+              </button>
+              <p className="mt-3 flex items-center justify-center gap-1 text-center text-xs text-base-content/40">
+                <CheckCircle2 className="h-3 w-3 text-success" /> Generated on
+                the server for your authenticated session
+              </p>
             </div>
           </form>
         </div>
