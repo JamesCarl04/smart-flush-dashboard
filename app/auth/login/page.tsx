@@ -40,6 +40,7 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    mode: 'onTouched',
   });
 
   const onSubmit = async (data: LoginFormValues) => {
