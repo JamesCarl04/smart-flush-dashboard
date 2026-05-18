@@ -556,79 +556,86 @@ export default function ConfigurationPage() {
               <Settings2 className="h-5 w-5 text-primary" />
               Device Profile
             </h2>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Device Name</span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered w-full"
-                  value={deviceName}
-                  disabled={loadingConfiguration}
-                  onChange={(event) => {
-                    setDeviceName(event.target.value);
-                    markDirty();
-                  }}
-                />
-              </div>
-              <div className="flex flex-col justify-center gap-2 pt-2">
-                <div className="text-sm">
-                  <span className="inline-block w-24 text-base-content/50">
-                    Status:
-                  </span>
-                  {deviceLoading ? (
-                    <span className="ml-2 inline-block h-4 w-12 skeleton"></span>
-                  ) : (
-                    <span
-                      className={`badge badge-sm ml-2 gap-1 ${
-                        connected ? 'badge-success' : 'badge-error'
-                      }`}
-                      title={deviceReason}
-                    >
-                      {connected ? 'Connected' : 'Disconnected'}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleDeviceSave();
+              }}
+            >
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium">Device Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={deviceName}
+                    disabled={loadingConfiguration}
+                    onChange={(event) => {
+                      setDeviceName(event.target.value);
+                      markDirty();
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col justify-center gap-2 pt-2">
+                  <div className="text-sm">
+                    <span className="inline-block w-24 text-base-content/50">
+                      Status:
                     </span>
+                    {deviceLoading ? (
+                      <span className="ml-2 inline-block h-4 w-12 skeleton"></span>
+                    ) : (
+                      <span
+                        className={`badge badge-sm ml-2 gap-1 ${
+                          connected ? 'badge-success' : 'badge-error'
+                        }`}
+                        title={deviceReason}
+                      >
+                        {connected ? 'Connected' : 'Disconnected'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm">
+                    <span className="inline-block w-24 text-base-content/50">
+                      Last Seen:
+                    </span>
+                    <span className="ml-2">
+                      {deviceLoading ? (
+                        <span className="inline-block h-4 w-20 skeleton"></span>
+                      ) : lastSeen ? (
+                        formatDistanceToNow(new Date(lastSeen), {
+                          addSuffix: true,
+                        })
+                      ) : (
+                        'Never'
+                      )}
+                    </span>
+                  </div>
+                  {!deviceLoading && (
+                    <div className="text-xs text-base-content/50">
+                      {deviceStatus === 'online'
+                        ? 'ESP32 heartbeat is active.'
+                        : deviceReason}
+                    </div>
                   )}
                 </div>
-                <div className="text-sm">
-                  <span className="inline-block w-24 text-base-content/50">
-                    Last Seen:
-                  </span>
-                  <span className="ml-2">
-                    {deviceLoading ? (
-                      <span className="inline-block h-4 w-20 skeleton"></span>
-                    ) : lastSeen ? (
-                      formatDistanceToNow(new Date(lastSeen), {
-                        addSuffix: true,
-                      })
-                    ) : (
-                      'Never'
-                    )}
-                  </span>
-                </div>
-                {!deviceLoading && (
-                  <div className="text-xs text-base-content/50">
-                    {deviceStatus === 'online'
-                      ? 'ESP32 heartbeat is active.'
-                      : deviceReason}
-                  </div>
-                )}
               </div>
-            </div>
-            <div className="card-actions mt-4 justify-end">
-              <button
-                className={`btn btn-primary btn-sm ${savingSection === 'device' ? 'btn-disabled' : ''}`}
-                disabled={loadingConfiguration || savingSection !== null}
-                onClick={handleDeviceSave}
-              >
-                {savingSection === 'device' ? (
-                  <span className="loading loading-spinner loading-xs"></span>
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Save Profile
-              </button>
-            </div>
+              <div className="card-actions mt-4 justify-end">
+                <button
+                  type="submit"
+                  className={`btn btn-primary btn-sm ${savingSection === 'device' ? 'btn-disabled' : ''}`}
+                  disabled={loadingConfiguration || savingSection !== null}
+                >
+                  {savingSection === 'device' ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save Profile
+                </button>
+              </div>
+            </form>
           </div>
         </div>
 
@@ -638,61 +645,70 @@ export default function ConfigurationPage() {
               <SlidersHorizontal className="h-5 w-5 text-info" />
               Sensor Calibration
             </h2>
-            <div className="flex flex-col items-center gap-8 md:flex-row">
-              <div className="form-control w-full flex-1">
-                <label className="label">
-                  <span className="label-text font-medium">
-                    Occupancy Detection Threshold
-                  </span>
-                  <span className="label-text-alt font-bold text-info">
-                    {threshold} cm
-                  </span>
-                </label>
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  value={threshold}
-                  disabled={loadingConfiguration}
-                  className="range range-info range-sm mt-2"
-                  onChange={(event) => {
-                    setThreshold(Number(event.target.value));
-                    markDirty();
-                  }}
-                />
-                <div className="mt-2 flex w-full justify-between px-2 text-xs text-base-content/50">
-                  <span>10cm</span>
-                  <span>Max sensitivity (100cm)</span>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleCalibrationSave();
+              }}
+            >
+              <div className="flex flex-col items-center gap-8 md:flex-row">
+                <div className="form-control w-full flex-1">
+                  <label className="label">
+                    <span className="label-text font-medium">
+                      Occupancy Detection Threshold
+                    </span>
+                    <span className="label-text-alt font-bold text-info">
+                      {threshold} cm
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={threshold}
+                    disabled={loadingConfiguration}
+                    className="range range-info range-sm mt-2"
+                    onChange={(event) => {
+                      setThreshold(Number(event.target.value));
+                      markDirty();
+                    }}
+                  />
+                  <div className="mt-2 flex w-full justify-between px-2 text-xs text-base-content/50">
+                    <span>10cm</span>
+                    <span>Max sensitivity (100cm)</span>
+                  </div>
+                </div>
+                <div className="w-full shrink-0 rounded-xl border border-base-300 bg-base-200 p-4 text-center md:w-48">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-base-content/60">
+                    Live Reading
+                  </div>
+                  <div className="font-mono text-3xl font-bold">
+                    {ultrasonicDistance !== undefined
+                      ? ultrasonicDistance
+                      : '--'}{' '}
+                    <span className="font-sans text-sm text-base-content/50">
+                      cm
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="w-full shrink-0 rounded-xl border border-base-300 bg-base-200 p-4 text-center md:w-48">
-                <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-base-content/60">
-                  Live Reading
-                </div>
-                <div className="font-mono text-3xl font-bold">
-                  {ultrasonicDistance !== undefined ? ultrasonicDistance : '--'}{' '}
-                  <span className="font-sans text-sm text-base-content/50">
-                    cm
-                  </span>
-                </div>
+              <div className="card-actions mt-4 justify-end">
+                <button
+                  type="submit"
+                  className={`btn btn-info btn-sm text-white ${
+                    savingSection === 'calibration' ? 'btn-disabled' : ''
+                  }`}
+                  disabled={loadingConfiguration || savingSection !== null}
+                >
+                  {savingSection === 'calibration' ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Apply Calibration
+                </button>
               </div>
-            </div>
-            <div className="card-actions mt-4 justify-end">
-              <button
-                className={`btn btn-info btn-sm text-white ${
-                  savingSection === 'calibration' ? 'btn-disabled' : ''
-                }`}
-                disabled={loadingConfiguration || savingSection !== null}
-                onClick={handleCalibrationSave}
-              >
-                {savingSection === 'calibration' ? (
-                  <span className="loading loading-spinner loading-xs"></span>
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Apply Calibration
-              </button>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -702,90 +718,97 @@ export default function ConfigurationPage() {
               <Clock className="h-5 w-5 text-accent" />
               Timing Parameters
             </h2>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">
-                    Pump Duration (sec)
-                  </span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="30"
-                  className="input input-bordered w-full"
-                  value={timing.pumpDuration}
-                  disabled={loadingConfiguration}
-                  onChange={(event) => {
-                    setTiming((currentTiming) => ({
-                      ...currentTiming,
-                      pumpDuration: Number(event.target.value),
-                    }));
-                    markDirty();
-                  }}
-                />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleTimingSave();
+              }}
+            >
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium">
+                      Pump Duration (sec)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    className="input input-bordered w-full"
+                    value={timing.pumpDuration}
+                    disabled={loadingConfiguration}
+                    onChange={(event) => {
+                      setTiming((currentTiming) => ({
+                        ...currentTiming,
+                        pumpDuration: Number(event.target.value),
+                      }));
+                      markDirty();
+                    }}
+                  />
+                </div>
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium">
+                      UV Duration (sec)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="120"
+                    className="input input-bordered w-full"
+                    value={timing.uvDuration}
+                    disabled={loadingConfiguration}
+                    onChange={(event) => {
+                      setTiming((currentTiming) => ({
+                        ...currentTiming,
+                        uvDuration: Number(event.target.value),
+                      }));
+                      markDirty();
+                    }}
+                  />
+                </div>
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium">
+                      Departure Confirm (sec)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    className="input input-bordered w-full"
+                    value={timing.personGoneConfirm}
+                    disabled={loadingConfiguration}
+                    onChange={(event) => {
+                      setTiming((currentTiming) => ({
+                        ...currentTiming,
+                        personGoneConfirm: Number(event.target.value),
+                      }));
+                      markDirty();
+                    }}
+                  />
+                </div>
               </div>
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">
-                    UV Duration (sec)
-                  </span>
-                </label>
-                <input
-                  type="number"
-                  min="10"
-                  max="120"
-                  className="input input-bordered w-full"
-                  value={timing.uvDuration}
-                  disabled={loadingConfiguration}
-                  onChange={(event) => {
-                    setTiming((currentTiming) => ({
-                      ...currentTiming,
-                      uvDuration: Number(event.target.value),
-                    }));
-                    markDirty();
-                  }}
-                />
+              <div className="card-actions mt-4 justify-end">
+                <button
+                  type="submit"
+                  className={`btn btn-accent btn-sm text-white ${
+                    savingSection === 'timing' ? 'btn-disabled' : ''
+                  }`}
+                  disabled={loadingConfiguration || savingSection !== null}
+                >
+                  {savingSection === 'timing' ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save Timings
+                </button>
               </div>
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">
-                    Departure Confirm (sec)
-                  </span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  className="input input-bordered w-full"
-                  value={timing.personGoneConfirm}
-                  disabled={loadingConfiguration}
-                  onChange={(event) => {
-                    setTiming((currentTiming) => ({
-                      ...currentTiming,
-                      personGoneConfirm: Number(event.target.value),
-                    }));
-                    markDirty();
-                  }}
-                />
-              </div>
-            </div>
-            <div className="card-actions mt-4 justify-end">
-              <button
-                className={`btn btn-accent btn-sm text-white ${
-                  savingSection === 'timing' ? 'btn-disabled' : ''
-                }`}
-                disabled={loadingConfiguration || savingSection !== null}
-                onClick={handleTimingSave}
-              >
-                {savingSection === 'timing' ? (
-                  <span className="loading loading-spinner loading-xs"></span>
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Save Timings
-              </button>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -938,130 +961,136 @@ export default function ConfigurationPage() {
       >
         <div className="modal-box">
           <h3 className="font-bold text-lg mb-4">Create Automation Rule</h3>
-          <div className="space-y-4">
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Rule Name</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Max Daily Limit"
-                className="input input-bordered w-full"
-                value={ruleForm.name}
-                onChange={(event) =>
-                  setRuleForm((currentForm) => ({
-                    ...currentForm,
-                    name: event.target.value,
-                  }))
-                }
-              />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreateRule();
+            }}
+          >
+            <div className="space-y-4">
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Rule Name</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Max Daily Limit"
+                  className="input input-bordered w-full"
+                  value={ruleForm.name}
+                  onChange={(event) =>
+                    setRuleForm((currentForm) => ({
+                      ...currentForm,
+                      name: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Group</span>
+                </label>
+                <select
+                  className="select select-bordered w-full"
+                  value={ruleForm.group}
+                  onChange={(event) =>
+                    setRuleForm((currentForm) => ({
+                      ...currentForm,
+                      group: event.target.value as RuleGroup,
+                      action:
+                        event.target.value === 'maintenance'
+                          ? RULE_ACTION_OPTIONS[2]
+                          : currentForm.action === RULE_ACTION_OPTIONS[2]
+                            ? RULE_ACTION_OPTIONS[0]
+                            : currentForm.action,
+                    }))
+                  }
+                >
+                  <option value="alerts">System Alerts</option>
+                  <option value="maintenance">Hardware Maintenance</option>
+                </select>
+              </div>
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Trigger Condition</span>
+                </label>
+                <select
+                  className="select select-bordered w-full"
+                  value={ruleForm.trigger}
+                  onChange={(event) =>
+                    setRuleForm((currentForm) => ({
+                      ...currentForm,
+                      trigger: event.target.value,
+                    }))
+                  }
+                >
+                  {RULE_TRIGGER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Threshold / Limit</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  className="input input-bordered w-full"
+                  value={ruleForm.threshold}
+                  onChange={(event) =>
+                    setRuleForm((currentForm) => ({
+                      ...currentForm,
+                      threshold: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Action to Perform</span>
+                </label>
+                <select
+                  className="select select-bordered w-full"
+                  value={ruleForm.action}
+                  onChange={(event) =>
+                    setRuleForm((currentForm) => ({
+                      ...currentForm,
+                      action: event.target.value,
+                    }))
+                  }
+                >
+                  {RULE_ACTION_OPTIONS.map((action) => (
+                    <option key={action} value={action}>
+                      {action}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Group</span>
-              </label>
-              <select
-                className="select select-bordered w-full"
-                value={ruleForm.group}
-                onChange={(event) =>
-                  setRuleForm((currentForm) => ({
-                    ...currentForm,
-                    group: event.target.value as RuleGroup,
-                    action:
-                      event.target.value === 'maintenance'
-                        ? RULE_ACTION_OPTIONS[2]
-                        : currentForm.action === RULE_ACTION_OPTIONS[2]
-                          ? RULE_ACTION_OPTIONS[0]
-                          : currentForm.action,
-                  }))
-                }
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={closeRuleModal}
               >
-                <option value="alerts">System Alerts</option>
-                <option value="maintenance">Hardware Maintenance</option>
-              </select>
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Trigger Condition</span>
-              </label>
-              <select
-                className="select select-bordered w-full"
-                value={ruleForm.trigger}
-                onChange={(event) =>
-                  setRuleForm((currentForm) => ({
-                    ...currentForm,
-                    trigger: event.target.value,
-                  }))
-                }
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className={`btn btn-primary ${creatingRule ? 'btn-disabled' : ''}`}
+                disabled={creatingRule}
               >
-                {RULE_TRIGGER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                {creatingRule ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Create Rule
+              </button>
             </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Threshold / Limit</span>
-              </label>
-              <input
-                type="number"
-                min="0"
-                className="input input-bordered w-full"
-                value={ruleForm.threshold}
-                onChange={(event) =>
-                  setRuleForm((currentForm) => ({
-                    ...currentForm,
-                    threshold: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Action to Perform</span>
-              </label>
-              <select
-                className="select select-bordered w-full"
-                value={ruleForm.action}
-                onChange={(event) =>
-                  setRuleForm((currentForm) => ({
-                    ...currentForm,
-                    action: event.target.value,
-                  }))
-                }
-              >
-                {RULE_ACTION_OPTIONS.map((action) => (
-                  <option key={action} value={action}>
-                    {action}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="modal-action">
-            <button
-              className="btn btn-ghost"
-              type="button"
-              onClick={closeRuleModal}
-            >
-              Cancel
-            </button>
-            <button
-              className={`btn btn-primary ${creatingRule ? 'btn-disabled' : ''}`}
-              type="button"
-              disabled={creatingRule}
-              onClick={() => void handleCreateRule()}
-            >
-              {creatingRule ? (
-                <span className="loading loading-spinner loading-xs"></span>
-              ) : (
-                <Plus className="h-4 w-4" />
-              )}
-              Create Rule
-            </button>
-          </div>
+          </form>
         </div>
         <form method="dialog" className="modal-backdrop">
           <button>close</button>

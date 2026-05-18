@@ -269,7 +269,7 @@ export default function ReportsPage() {
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text font-medium text-base-content/80">
-                    Date Range
+                    Report Type
                   </span>
                 </label>
                 <select
@@ -279,46 +279,116 @@ export default function ReportsPage() {
                     setDateRange(event.target.value as DateRangeOption)
                   }
                 >
-                  {RANGE_OPTIONS.map((option) => (
+                  {REPORT_TYPE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
                 </select>
               </div>
-            )}
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text font-medium text-base-content/80">
-                  Export Format
-                </span>
-              </label>
-              <div className="mt-1 grid grid-cols-3 gap-2">
-                {(['PDF', 'CSV', 'JSON'] as ExportFormat[]).map(
-                  (formatOption) => {
-                    const isSelected = formatType === formatOption;
-                    return (
-                      <button
-                        key={formatOption}
-                        className={`btn h-12 border-base-300 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
-                          isSelected
-                            ? 'btn-primary text-primary-content'
-                            : 'bg-base-100 text-base-content hover:bg-base-200'
-                        }`}
-                        onClick={() => setFormatType(formatOption)}
-                        type="button"
-                      >
-                        <span className="flex flex-col items-center justify-center gap-1">
-                          <FormatIcon fmt={formatOption} className="h-4 w-4" />
-                          <span className="text-[10px]">{formatOption}</span>
+              {isCustomRange ? (
+                <div className="space-y-4 rounded-xl border border-base-200 bg-base-200/30 p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-base-content/70">
+                    <CalendarRange className="h-4 w-4 text-primary" /> )
+                    Custom Range
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="form-control w-full">
+                      <label className="label">
+                        <span className="label-text font-medium text-base-content/80">
+                          From Date
                         </span>
-                      </button>
-                    );
-                  },
-                )}
+                      </label>
+                      <input
+                        type="date"
+                        className="input input-bordered w-full"
+                        value={customRange.from}
+                        onChange={(e) =>
+                          setCustomRange((current) => ({
+                            ...current,
+                            from: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="form-control w-full">
+                      <label className="label">
+                        <span className="label-text font-medium text-base-content/80">
+                          To Date
+                        </span>
+                      </label>
+                      <input
+                        type="date"
+                        className="input input-bordered w-full"
+                        value={customRange.to}
+                        onChange={(e) =>
+                          setCustomRange((current) => ({
+                            ...current,
+                            to: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium text-base-content/80">
+                      Date Range
+                    </span>
+                  </label>
+                  <select
+                    className="select select-bordered w-full"
+                    value={dateRange}
+                    onChange={(e) =>
+                      setDateRange(e.target.value as DateRangeOption)
+                    }
+                  >
+                    {RANGE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text font-medium text-base-content/80">
+                    Export Format
+                  </span>
+                </label>
+                <div className="mt-1 grid grid-cols-3 gap-2">
+                  {(['PDF', 'CSV', 'JSON'] as ExportFormat[]).map(
+                    (formatOption) => {
+                      const isSelected = formatType === formatOption;
+                      return (
+                        <button
+                          key={formatOption}
+                          className={`btn h-12 border-base-300 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                            isSelected
+                              ? 'btn-primary text-primary-content'
+                              : 'bg-base-100 text-base-content hover:bg-base-200'
+                          }`}
+                          onClick={() => setFormatType(formatOption)}
+                          type="button"
+                        >
+                          <span className="flex flex-col items-center justify-center gap-1">
+                            <FormatIcon
+                              fmt={formatOption}
+                              className="h-4 w-4"
+                            />
+                            <span className="text-[10px]">{formatOption}</span>
+                          </span>
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
               </div>
-            </div>
 
             <div className="pt-2">
               <button
@@ -343,7 +413,7 @@ export default function ReportsPage() {
                 the server for your authenticated session
               </p>
             </div>
-          </div>
+          </form>
         </div>
 
         <div className="lg:col-span-2">
