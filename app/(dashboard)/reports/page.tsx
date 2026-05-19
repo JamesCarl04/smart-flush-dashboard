@@ -110,9 +110,10 @@ export default function ReportsPage() {
     }
   }, [customRange, dateRange, usesExplicitRange]);
 
-  const handleGenerate = async () => {
-    if (!user) {
-      toast.error('You must be logged in to generate reports.');
+  const handleGenerate = async (event: React.FormEvent) => {
+  event.preventDefault()
+  if (!user) {
+    toast.error('You must be logged in to generate reports.');
       return;
     }
 
@@ -200,6 +201,7 @@ export default function ReportsPage() {
             </h2>
           </div>
 
+          <form onSubmit={handleGenerate}>
           <div className="space-y-6 p-6">
             <div className="form-control w-full">
               <label className="label">
@@ -321,11 +323,11 @@ export default function ReportsPage() {
             </div>
 
             <div className="pt-2">
-              <button
-                className="btn btn-primary h-12 w-full shadow-lg"
-                onClick={handleGenerate}
-                disabled={isGenerating || hasInvalidDateRange}
-              >
+<button
+  type="submit"
+  className="btn btn-primary h-12 w-full shadow-lg"
+  disabled={isGenerating || hasInvalidDateRange}
+>
                 {isGenerating ? (
                   <>
                     <span className="loading loading-spinner loading-sm"></span>
@@ -344,6 +346,7 @@ export default function ReportsPage() {
               </p>
             </div>
           </div>
+          </form>
         </div>
 
         <div className="lg:col-span-2">
