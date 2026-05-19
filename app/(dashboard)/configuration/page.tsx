@@ -319,7 +319,8 @@ export default function ConfigurationPage() {
     }
   };
 
-  const handleDeviceSave = async () => {
+  const handleDeviceSave = async (event: React.FormEvent) => {
+  event.preventDefault()
     if (!user) {
       toast.error('You must be logged in to save device settings.');
       return;
@@ -556,7 +557,7 @@ export default function ConfigurationPage() {
               <Settings2 className="h-5 w-5 text-primary" />
               Device Profile
             </h2>
-            <form onSubmit={(e) => { e.preventDefault(); void handleDeviceSave(); }}>
+            <form onSubmit={handleDeviceSave}>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="form-control w-full">
                 <label className="label">
